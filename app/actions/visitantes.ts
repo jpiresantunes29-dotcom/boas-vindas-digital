@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { visitanteSchema, type VisitanteInput } from "@/lib/validacao/visitanteSchema";
 import { criarClienteSupabaseAdmin } from "@/lib/supabase/client";
 import { notificarNovoVisitante } from "@/lib/notificacao/enviarEmail";
+import { notificarVisitante, notificarResponsavel } from "@/lib/notificacao/enviarWhatsApp";
 import { pareceBot } from "@/lib/seguranca/honeypot";
 import { excedeuLimite } from "@/lib/seguranca/rateLimit";
 
@@ -96,9 +97,20 @@ export async function cadastrarVisitante(dados: VisitanteInput): Promise<Resulta
     return { ok: false, erro: MENSAGEM_ERRO_GENERICA };
   }
 
-  // Best-effort: falha no envio do e-mail não deve reverter nem sinalizar
+  // Best-effort: falha no envio de notificações não deve reverter nem sinalizar
   // erro no cadastro, que já foi concluído com sucesso (RF15 / RN07).
-  await notificarNovoVisitante(visitante, recorrente);
+  // Tenta enviar por e-mail e WhatsApp em paralelo.
+  Promise.all([
+    notificarNovoVisitante(visitante, recorrente),
+    notificarVisitante(visitante.nome, visitante.celular),
+    notificarResponsavel(
+      visitante.nome,
+      visitante.celular,
+      process.env.NOTIFICACAO_WHATSAPP_NUMERO || ""
+    ),
+  ]).catch((err) => {
+    console.error("Erro ao enviar notificações:", err);
+  });
 
   return { ok: true, nome: visitante.nome, recorrente };
 }

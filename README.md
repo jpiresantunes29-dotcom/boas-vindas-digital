@@ -35,7 +35,8 @@ Fechar o ciclo entre "a pessoa visitou" e "alguém da igreja falou com ela", com
 | Validação | Zod | Um único schema compartilhado entre cliente e servidor — nunca divergem. |
 | Formulário | React Hook Form | Estados de erro/loading sem re-renderizações desnecessárias em um celular modesto. |
 | Banco de dados | Supabase (Postgres) | Gerenciado, gratuito nesta escala, com Row Level Security nativo. |
-| Notificação | Resend | E-mail transacional gratuito até 3.000/mês, sem processo de aprovação. |
+| Notificação (e-mail) | Resend | E-mail transacional gratuito até 3.000/mês, sem processo de aprovação. |
+| Notificação (WhatsApp) | Evolution API | API open source para WhatsApp, gratuita, sem custo por mensagem. |
 | Deploy | Vercel | Deploy automático a cada push, HTTPS e CDN grátis. |
 | Testes | Vitest + Testing Library | Padrão atual para projetos Vite/Next, rápido em modo watch. |
 
@@ -122,6 +123,27 @@ Quando o visitante preenche o campo CEP (8 dígitos) e sai do campo, o formulár
 Os campos são preenchidos automaticamente e o visitante pode editar se necessário. Se o CEP não existir ou a rede falhar, uma mensagem de erro é exibida e o visitante continua podendo preencher manualmente. O campo CEP é opcional.
 
 Não há dependência externa — usa apenas `fetch` do navegador.
+
+## 11.1 Notificações via WhatsApp (Evolution API)
+
+Após o cadastro bem-sucedido, o sistema envia **dois** mensagens de WhatsApp em paralelo (best-effort):
+
+1. **Para o visitante**: confirmação de que o cadastro foi recebido
+2. **Para o responsável**: aviso de novo cadastro com nome e celular
+
+Usa [Evolution API](https://docs.evolution.company/), uma solução open source gratuita. Para ativar:
+
+1. Deploy a Evolution API em um servidor (Docker, VPS) — veja [guia de instalação](https://docs.evolution.company/v1/docs/instalacao/index)
+2. Configure as variáveis de ambiente no `.env.local`:
+   ```
+   EVOLUTION_API_URL=https://sua-evolucao.com.br
+   EVOLUTION_API_KEY=sua-chave-api
+   EVOLUTION_INSTANCE=seu-nome-instancia
+   NOTIFICACAO_WHATSAPP_NUMERO=5541997479889
+   ```
+3. A Evolution API se conecta ao WhatsApp (via mobile app ou API oficial)
+
+Se as variáveis não forem configuradas, as notificações são puladas silenciosamente — o cadastro funciona normalmente (graceful degradation).
 
 ## 12. Executar localmente
 
