@@ -13,6 +13,7 @@ import {
   type VisitanteInput,
 } from "@/lib/validacao/visitanteSchema";
 import { cadastrarVisitante } from "@/app/actions/visitantes";
+import { useBuscaCEP } from "@/lib/cep/useBuscaCEP";
 import { Campo } from "@/components/ui/Campo";
 import { OpcaoToggle } from "@/components/ui/OpcaoToggle";
 import { Botao } from "@/components/ui/Botao";
@@ -25,6 +26,7 @@ const VALORES_INICIAIS: VisitanteInput = {
   sexo: undefined,
   estadoCivil: undefined,
   dataNascimento: "",
+  cep: "",
   endereco: "",
   bairro: "",
   cidade: "Curitiba",
@@ -43,11 +45,13 @@ type FormularioVisitanteProps = {
 
 export function FormularioVisitante({ aoConcluir }: FormularioVisitanteProps) {
   const [erroEnvio, setErroEnvio] = useState<string | null>(null);
+  const { buscar: buscarCEP, carregando: carregandoCEP, erro: erroCEP, setErro: setErroCEP } = useBuscaCEP();
 
   const {
     register,
     handleSubmit,
     watch,
+    setValue,
     setError,
     formState: { errors, isSubmitting },
   } = useForm<VisitanteInput>({
@@ -56,6 +60,18 @@ export function FormularioVisitante({ aoConcluir }: FormularioVisitanteProps) {
   });
 
   const comoConheceu = watch("comoConheceu");
+
+  const aoPreencherCEP = async (cepRaw: string) => {
+    if (!cepRaw || cepRaw.replace(/\D/g, "").length !== 8) return;
+
+    const dados = await buscarCEP(cepRaw);
+    if (dados) {
+      setValue("endereco", dados.logradouro);
+      setValue("bairro", dados.bairro);
+      setValue("cidade", dados.cidade);
+      setErroCEP(null);
+    }
+  };
 
   const aoSubmeter = handleSubmit(async (dados) => {
     setErroEnvio(null);
@@ -177,6 +193,25 @@ export function FormularioVisitante({ aoConcluir }: FormularioVisitanteProps) {
         <p className="-mt-3 text-sm text-ink-muted">
           Usamos para organizar as visitas da nossa equipe.
         </p>
+
+        <Campo
+          id="cep"
+          rotulo="CEP (opcional)"
+          erro={errors.cep?.message || (erroCEP ? erroCEP : undefined)}
+        >
+          <input
+            id="cep"
+            type="text"
+            inputMode="numeric"
+            placeholder="Preencha para autocompletar o endereço"
+            className={classeInput}
+            aria-invalid={Boolean(errors.cep || erroCEP)}
+            aria-describedby={errors.cep || erroCEP ? "cep-erro" : undefined}
+            disabled={carregandoCEP}
+            {...register("cep")}
+            onBlur={(e) => aoPreencherCEP(e.target.value)}
+          />
+        </Campo>
 
         <Campo id="endereco" rotulo="Endereço" obrigatorio erro={errors.endereco?.message}>
           <input

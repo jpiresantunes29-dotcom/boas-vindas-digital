@@ -72,6 +72,14 @@ const dataNascimentoSchema = z
     message: "A data de nascimento não pode ser no futuro.",
   });
 
+const cepSchema = z
+  .string()
+  .trim()
+  .refine((v) => v === "" || /^\d{8}$/.test(v.replace(/\D/g, "")), {
+    message: "CEP deve ter 8 dígitos.",
+  })
+  .optional();
+
 export const visitanteSchema = z
   .object({
     nome: z
@@ -86,6 +94,7 @@ export const visitanteSchema = z
     sexo: enumOpcional(SEXO_OPCOES),
     estadoCivil: enumOpcional(ESTADO_CIVIL_OPCOES),
     dataNascimento: dataNascimentoSchema,
+    cep: cepSchema,
     endereco: z
       .string()
       .trim()
