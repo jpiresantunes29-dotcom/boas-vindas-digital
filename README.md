@@ -17,7 +17,7 @@ Fechar o ciclo entre "a pessoa visitou" e "alguém da igreja falou com ela", com
 ## 4. Principais funcionalidades
 
 - Página de boas-vindas com a identidade visual da igreja (logo, cores, versículo do tema anual).
-- Formulário mobile-first com os 13 campos da folha física original, mais e-mail (novo, opcional) e pedido de oração (opcional).
+- Formulário mobile-first com os 13 campos da folha física original, mais e-mail (novo, opcional), pedido de oração (opcional), e **CEP que autocompletar endereço via ViaCEP** (novo).
 - Validação em duas camadas: no navegador (feedback imediato) e no servidor (nunca confia só no cliente).
 - Proteção contra spam (honeypot) e contra picos de bots (limite de taxa por IP), sem captcha visível.
 - Bloqueio de reenvio duplicado do mesmo formulário.
@@ -111,7 +111,19 @@ cp .env.example .env.local
 3. Confirme em **Table Editor** que a tabela `visitantes` foi criada com Row Level Security **ativado** e nenhuma policy de `anon` — toda escrita deve passar pela Server Action, nunca diretamente do navegador.
 4. Copie a URL do projeto e a `service_role key` para o `.env.local`.
 
-## 11. Executar localmente
+## 11. Campo CEP com autocomplete
+
+Quando o visitante preenche o campo CEP (8 dígitos) e sai do campo, o formulário busca automaticamente os dados de endereço via [ViaCEP](https://viacep.com.br/), uma API pública gratuita:
+
+- **Logradouro** (rua, avenida, etc)
+- **Bairro**
+- **Cidade**
+
+Os campos são preenchidos automaticamente e o visitante pode editar se necessário. Se o CEP não existir ou a rede falhar, uma mensagem de erro é exibida e o visitante continua podendo preencher manualmente. O campo CEP é opcional.
+
+Não há dependência externa — usa apenas `fetch` do navegador.
+
+## 12. Executar localmente
 
 ```bash
 npm run dev
@@ -127,14 +139,14 @@ npm run test    # Vitest (validação, honeypot, rate limit, formulário)
 npm run build   # build de produção
 ```
 
-## 12. Deploy na Vercel
+## 13. Deploy na Vercel
 
 1. Suba o repositório para o GitHub.
 2. Importe o projeto em [vercel.com/new](https://vercel.com/new).
 3. Configure as mesmas variáveis de ambiente do `.env.local` no painel da Vercel (Settings → Environment Variables).
 4. Deploy automático a cada push em `main`; cada Pull Request ganha uma preview própria.
 
-## 13. Gerar e configurar o QR Code
+## 14. Gerar e configurar o QR Code
 
 O QR deve apontar para um **domínio estável**, não para a URL temporária `*.vercel.app` — assim, se a hospedagem mudar no futuro, o material impresso não precisa ser trocado.
 
@@ -142,15 +154,16 @@ O QR deve apontar para um **domínio estável**, não para a URL temporária `*.
 2. Gere o QR Code apontando para esse domínio (qualquer gerador de QR gratuito serve — o conteúdo é só a URL).
 3. Só substitua o QR exibido no telão depois de confirmar que o domínio final está no ar.
 
-## 14. Segurança
+## 15. Segurança
 
 - A `service_role key` do Supabase só existe como variável de ambiente no servidor — nunca no código-fonte, no repositório ou no bundle enviado ao navegador.
 - A tabela `visitantes` tem Row Level Security ativado e nenhuma policy pública de leitura/escrita: toda operação passa pela Server Action.
 - Validação dupla (cliente com Zod + servidor com o mesmo schema) — o frontend nunca é a única barreira.
 - Honeypot (campo invisível) e limite de taxa por IP contêm bots sem exigir captcha do visitante real.
 - Bloqueio de reenvio duplicado do mesmo formulário.
+- A busca de CEP é feita no navegador (cliente) contra a ViaCEP pública — nenhum dado sensível é enviado para a API de CEP.
 
-## 15. LGPD e privacidade
+## 16. LGPD e privacidade
 
 - **Finalidade**: os dados são coletados apenas para o primeiro contato pastoral e organização de visitas — nunca para fins comerciais ou compartilhamento com terceiros.
 - **Minimização**: só nome e celular são estritamente necessários para o objetivo central; os demais campos existem porque a própria igreja confirmou seu uso (endereço para visitas, data de nascimento para acompanhamento pastoral).
@@ -158,7 +171,7 @@ O QR deve apontar para um **domínio estável**, não para a URL temporária `*.
 - **Acesso**: restrito às contas autorizadas no Supabase — sem endpoint público de leitura.
 - **Exclusão**: como é uma tabela simples em Postgres, remover o registro de alguém que solicitar exclusão é uma operação direta via painel do Supabase.
 
-## 16. Roadmap (fora do escopo desta fase)
+## 17. Roadmap (fora do escopo desta fase)
 
 - Dashboard próprio de acompanhamento (fora do painel do Supabase).
 - Autenticação da equipe com papéis (admin, obreiro, pastor).
