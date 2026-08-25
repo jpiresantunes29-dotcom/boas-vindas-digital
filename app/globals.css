@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-display: var(--font-fraunces);
+  --font-sans: var(--font-inter);
+
+  --color-cream: #faf7f0;
+  --color-cream-2: #f3eee1;
+  --color-navy: #16213e;
+  --color-navy-2: #223058;
+  --color-ink-muted: #5b6478;
+  --color-gold: #c99a2e;
+  --color-gold-text: #8a6508;
+  --color-gold-soft: #f3e3b0;
+  --color-wood: #6b4226;
+  --color-border: #e4dfd0;
+  --color-error: #b3261e;
+  --color-error-soft: #fbebea;
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  background: var(--color-cream);
+  color: var(--color-navy);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+/* Alvo de toque confortável em qualquer elemento interativo do formulário. */
+input,
+select,
+textarea,
+button {
+  font-family: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
