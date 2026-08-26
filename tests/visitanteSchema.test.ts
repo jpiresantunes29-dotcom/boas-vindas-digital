@@ -6,7 +6,8 @@ const BASE_VALIDA = {
   celular: "(41) 99747-9889",
   email: "",
   dataNascimento: "1990-05-20",
-  endereco: "Rua das Flores, 100",
+  endereco: "Rua das Flores",
+  numero: "100",
   bairro: "",
   cidade: "",
   desejaSeUnir: true,
@@ -46,6 +47,11 @@ describe("visitanteSchema", () => {
 
   it("rejeita quando falta o endereço", () => {
     const resultado = visitanteSchema.safeParse({ ...BASE_VALIDA, endereco: "" });
+    expect(resultado.success).toBe(false);
+  });
+
+  it("rejeita quando falta o número do endereço", () => {
+    const resultado = visitanteSchema.safeParse({ ...BASE_VALIDA, numero: "" });
     expect(resultado.success).toBe(false);
   });
 

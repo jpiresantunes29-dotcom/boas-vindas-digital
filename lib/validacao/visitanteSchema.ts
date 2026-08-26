@@ -17,6 +17,14 @@ export const COMO_CONHECEU_OPCOES = [
   "outro",
 ] as const;
 
+export const TIPO_MORADIA_OPCOES = ["casa", "apartamento", "condominio"] as const;
+
+export const TIPO_MORADIA_ROTULOS: Record<(typeof TIPO_MORADIA_OPCOES)[number], string> = {
+  casa: "Casa",
+  apartamento: "Apartamento",
+  condominio: "Condomínio",
+};
+
 export const ESTADO_CIVIL_ROTULOS: Record<(typeof ESTADO_CIVIL_OPCOES)[number], string> = {
   solteiro: "Solteiro(a)",
   namorando: "Namorando",
@@ -100,6 +108,13 @@ export const visitanteSchema = z
       .trim()
       .min(3, "Informe seu endereço.")
       .max(200, "Endereço muito longo."),
+    numero: z
+      .string()
+      .trim()
+      .min(1, "Informe o número.")
+      .max(20, "Número muito longo."),
+    complemento: z.string().trim().max(120).optional(),
+    tipoMoradia: enumOpcional(TIPO_MORADIA_OPCOES),
     bairro: z.string().trim().max(120).optional(),
     cidade: z.string().trim().max(120).optional(),
     comoConheceu: enumOpcional(COMO_CONHECEU_OPCOES),

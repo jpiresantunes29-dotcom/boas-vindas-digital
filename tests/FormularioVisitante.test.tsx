@@ -18,7 +18,8 @@ async function renderComCamposObrigatorios(aoConcluir = vi.fn()) {
   fireEvent.change(screen.getByLabelText(/data de nascimento/i), {
     target: { value: "1990-05-20" },
   });
-  await usuario.type(screen.getByLabelText(/^endereço/i), "Rua das Flores, 100");
+  await usuario.type(screen.getByLabelText(/^endereço/i), "Rua das Flores");
+  await usuario.type(screen.getByLabelText(/^número/i), "100");
   await usuario.click(screen.getByLabelText(/me unir a essa igreja/i));
   return { usuario, aoConcluir };
 }

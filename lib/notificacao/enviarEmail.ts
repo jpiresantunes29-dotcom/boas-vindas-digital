@@ -1,7 +1,11 @@
 import "server-only";
 import { Resend } from "resend";
 import type { VisitanteValidado } from "@/lib/validacao/visitanteSchema";
-import { ESTADO_CIVIL_ROTULOS, COMO_CONHECEU_ROTULOS } from "@/lib/validacao/visitanteSchema";
+import {
+  ESTADO_CIVIL_ROTULOS,
+  COMO_CONHECEU_ROTULOS,
+  TIPO_MORADIA_ROTULOS,
+} from "@/lib/validacao/visitanteSchema";
 
 function linkWhatsApp(celular: string): string {
   return `https://wa.me/55${celular}`;
@@ -23,9 +27,18 @@ function montarHtml(dados: VisitanteValidado, recorrente: boolean): string {
     linhas.push(`<p><strong>Data de nascimento:</strong> ${escapeHtml(dados.dataNascimento)}</p>`);
   linhas.push(
     `<p><strong>Endereço:</strong> ${escapeHtml(
-      [dados.endereco, dados.bairro, dados.cidade].filter(Boolean).join(", ")
+      [
+        [dados.endereco, dados.numero].filter(Boolean).join(", "),
+        dados.complemento,
+        dados.bairro,
+        dados.cidade,
+      ]
+        .filter(Boolean)
+        .join(", ")
     )}</p>`
   );
+  if (dados.tipoMoradia)
+    linhas.push(`<p><strong>Tipo de moradia:</strong> ${TIPO_MORADIA_ROTULOS[dados.tipoMoradia]}</p>`);
   if (dados.comoConheceu)
     linhas.push(`<p><strong>Como conheceu a igreja:</strong> ${COMO_CONHECEU_ROTULOS[dados.comoConheceu]}</p>`);
   if (dados.convidadoPor)

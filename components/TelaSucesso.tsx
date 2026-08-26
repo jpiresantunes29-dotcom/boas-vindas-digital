@@ -6,6 +6,13 @@ type TelaSucessoProps = {
   aoVoltar: () => void;
 };
 
+const WHATSAPP_NUMEROS = [
+  { rotulo: "47 98845-5100", link: "https://wa.me/5547988455100" },
+  { rotulo: "41 99747-9889", link: "https://wa.me/5541997479889" },
+];
+
+const INSTAGRAM_URL = "https://www.instagram.com/aliancacristacuritiba";
+
 /**
  * Absorve o antigo QR "Saiba Mais" do cartão físico: depois do envio, o
  * visitante já engajado recebe os cultos e o contato da igreja aqui mesmo,
@@ -16,8 +23,8 @@ export function TelaSucesso({ nome, recorrente, aoVoltar }: TelaSucessoProps) {
   const primeiroNome = nome.trim().split(/\s+/)[0] ?? nome;
 
   return (
-    <div className="flex flex-col items-center gap-8 text-center">
-      <div className="flex flex-col gap-3">
+    <div className="mx-auto flex w-full max-w-md flex-col items-center gap-8 text-center">
+      <div className="flex flex-col items-center gap-3">
         <p className="font-display text-2xl italic text-navy">
           Que alegria ter você aqui, {primeiroNome}!
         </p>
@@ -32,9 +39,9 @@ export function TelaSucesso({ nome, recorrente, aoVoltar }: TelaSucessoProps) {
         )}
       </div>
 
-      <div className="grid w-full gap-4 sm:grid-cols-2">
-        <div className="rounded-2xl border border-border bg-white p-5 text-left">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gold-text">
+      <div className="flex w-full flex-col gap-4">
+        <div className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-white px-6 py-5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gold-text">
             Nossos cultos
           </p>
           <p className="text-[15px] text-navy">
@@ -45,15 +52,40 @@ export function TelaSucesso({ nome, recorrente, aoVoltar }: TelaSucessoProps) {
           </p>
         </div>
 
-        <div className="rounded-2xl border border-border bg-white p-5 text-left">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gold-text">
+        <div className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-white px-6 py-5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gold-text">
             Fale com a gente
           </p>
-          <p className="text-[15px] text-navy">WhatsApp: 47 98845-5100 / 41 99747-9889</p>
+          <p className="text-[15px] text-navy">
+            WhatsApp:{" "}
+            {WHATSAPP_NUMEROS.map((numero, indice) => (
+              <span key={numero.link}>
+                <a
+                  href={numero.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline decoration-gold underline-offset-2 hover:text-gold-text"
+                >
+                  {numero.rotulo}
+                </a>
+                {indice < WHATSAPP_NUMEROS.length - 1 && " / "}
+              </span>
+            ))}
+          </p>
           <p className="text-[15px] text-navy">
             R. Dep. Cunha Bueno, 352 — Cidade Industrial de Curitiba
           </p>
-          <p className="text-[15px] text-navy">Instagram @aliancacristacuritiba</p>
+          <p className="text-[15px] text-navy">
+            Instagram{" "}
+            <a
+              href={INSTAGRAM_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline decoration-gold underline-offset-2 hover:text-gold-text"
+            >
+              @aliancacristacuritiba
+            </a>
+          </p>
         </div>
       </div>
 

@@ -10,6 +10,8 @@ import {
   ESTADO_CIVIL_ROTULOS,
   COMO_CONHECEU_OPCOES,
   COMO_CONHECEU_ROTULOS,
+  TIPO_MORADIA_OPCOES,
+  TIPO_MORADIA_ROTULOS,
   type VisitanteInput,
 } from "@/lib/validacao/visitanteSchema";
 import { cadastrarVisitante } from "@/app/actions/visitantes";
@@ -28,6 +30,9 @@ const VALORES_INICIAIS: VisitanteInput = {
   dataNascimento: "",
   cep: "",
   endereco: "",
+  numero: "",
+  complemento: "",
+  tipoMoradia: undefined,
   bairro: "",
   cidade: "Curitiba",
   comoConheceu: undefined,
@@ -226,16 +231,54 @@ export function FormularioVisitante({ aoConcluir }: FormularioVisitanteProps) {
           />
         </Campo>
 
-        <Campo id="endereco" rotulo="Endereço" obrigatorio erro={errors.endereco?.message}>
-          <input
-            id="endereco"
-            type="text"
-            autoComplete="street-address"
-            className={classeInput}
-            aria-invalid={Boolean(errors.endereco)}
-            aria-describedby={errors.endereco ? "endereco-erro" : undefined}
-            {...register("endereco")}
-          />
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-[1fr_auto]">
+          <Campo id="endereco" rotulo="Endereço" obrigatorio erro={errors.endereco?.message}>
+            <input
+              id="endereco"
+              type="text"
+              autoComplete="street-address"
+              className={classeInput}
+              aria-invalid={Boolean(errors.endereco)}
+              aria-describedby={errors.endereco ? "endereco-erro" : undefined}
+              {...register("endereco")}
+            />
+          </Campo>
+          <Campo id="numero" rotulo="Número" obrigatorio erro={errors.numero?.message}>
+            <input
+              id="numero"
+              type="text"
+              inputMode="numeric"
+              autoComplete="address-line2"
+              className={`${classeInput} sm:w-28`}
+              aria-invalid={Boolean(errors.numero)}
+              aria-describedby={errors.numero ? "numero-erro" : undefined}
+              {...register("numero")}
+            />
+          </Campo>
+        </div>
+
+        <fieldset className="flex flex-col gap-2">
+          <legend className="text-[15px] font-medium text-navy">Tipo de moradia (opcional)</legend>
+          <div className="grid grid-cols-3 gap-3">
+            {TIPO_MORADIA_OPCOES.map((opcao) => (
+              <OpcaoToggle
+                key={opcao}
+                rotulo={TIPO_MORADIA_ROTULOS[opcao]}
+                type="radio"
+                value={opcao}
+                {...register("tipoMoradia")}
+              />
+            ))}
+          </div>
+        </fieldset>
+
+        <Campo
+          id="complemento"
+          rotulo="Complemento (opcional)"
+          dica="Apartamento, bloco, condomínio ou ponto de referência."
+          erro={errors.complemento?.message}
+        >
+          <input id="complemento" type="text" className={classeInput} {...register("complemento")} />
         </Campo>
 
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
