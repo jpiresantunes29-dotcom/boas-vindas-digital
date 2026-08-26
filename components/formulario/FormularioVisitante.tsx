@@ -96,10 +96,23 @@ export function FormularioVisitante({ aoConcluir }: FormularioVisitanteProps) {
 
   return (
     <form onSubmit={aoSubmeter} noValidate className="flex flex-col gap-10">
-      {/* Honeypot: invisível e fora da ordem de tabulação — só um bot preenche. */}
+      {/*
+        Honeypot: invisível e fora da ordem de tabulação — só um bot preenche.
+        O `name`/`id` renderizado é propositalmente diferente da chave "empresa"
+        do formulário — navegadores usam esses atributos (mesmo em campos ocultos
+        via CSS) para autofill de dados salvos de "empresa", o que preenchia o
+        campo para visitantes reais e derrubava o cadastro como se fosse bot.
+      */}
       <div className="sr-only" aria-hidden="true">
-        <label htmlFor="empresa">Deixe este campo em branco</label>
-        <input id="empresa" type="text" tabIndex={-1} autoComplete="off" {...register("empresa")} />
+        <label htmlFor="verificacao-extra">Deixe este campo em branco</label>
+        <input
+          type="text"
+          tabIndex={-1}
+          autoComplete="off"
+          {...register("empresa")}
+          id="verificacao-extra"
+          name="verificacao-extra"
+        />
       </div>
 
       <section className="flex flex-col gap-5">
