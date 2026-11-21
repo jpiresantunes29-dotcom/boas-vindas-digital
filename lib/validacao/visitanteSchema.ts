@@ -72,20 +72,27 @@ function enumOpcional<T extends readonly [string, ...string[]]>(opcoes: T) {
   );
 }
 
+const DATA_NASCIMENTO_MINIMA = "1900-01-01";
+
 const dataNascimentoSchema = z
   .string()
   .min(1, "Informe sua data de nascimento.")
-  .refine((v) => !Number.isNaN(Date.parse(v)), { message: "Data inválida." })
+  .refine((v) => /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(v)), {
+    message: "Data inválida.",
+  })
+  .refine((v) => v >= DATA_NASCIMENTO_MINIMA, { message: "Confira o ano de nascimento." })
   .refine((v) => new Date(v).getTime() <= Date.now(), {
     message: "A data de nascimento não pode ser no futuro.",
   });
 
+/** Aceita "81000-000" ou "81000000"; devolve só os 8 dígitos (ou "" se vazio). */
 const cepSchema = z
   .string()
   .trim()
   .refine((v) => v === "" || /^\d{8}$/.test(v.replace(/\D/g, "")), {
     message: "CEP deve ter 8 dígitos.",
   })
+  .transform((v) => v.replace(/\D/g, ""))
   .optional();
 
 export const visitanteSchema = z
@@ -123,6 +130,12 @@ export const visitanteSchema = z
     desejaSeUnir: z.boolean().default(false),
     desejaReceberVisita: z.boolean().default(false),
     pedidoOracao: z.string().trim().max(1000, "Pedido muito longo.").optional(),
+    /** Opt-in: o visitante só recebe a confirmação por WhatsApp se marcar. */
+    aceitaWhatsApp: z.boolean().default(false),
+    /** LGPD: ciência e concordância com o aviso de privacidade (obrigatório). */
+    aceitaPrivacidade: z.boolean().refine((v) => v === true, {
+      message: "Para enviar, confirme que leu e concorda com o aviso de privacidade.",
+    }),
     /** Honeypot: campo invisível ao visitante humano — se vier preenchido, é bot. */
     empresa: z.string().max(0).optional().default(""),
   })

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useRef, useState, useSyncExternalStore } from "react";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   visitanteSchema,
@@ -16,6 +16,7 @@ import {
 } from "@/lib/validacao/visitanteSchema";
 import { cadastrarVisitante } from "@/app/actions/visitantes";
 import { useBuscaCEP } from "@/lib/cep/useBuscaCEP";
+import { IGREJA } from "@/lib/config/igreja";
 import { Campo } from "@/components/ui/Campo";
 import { OpcaoToggle } from "@/components/ui/OpcaoToggle";
 import { Botao } from "@/components/ui/Botao";
@@ -41,8 +42,29 @@ const VALORES_INICIAIS: VisitanteInput = {
   desejaSeUnir: false,
   desejaReceberVisita: false,
   pedidoOracao: "",
+  aceitaWhatsApp: false,
+  aceitaPrivacidade: false,
   empresa: "",
 };
+
+/** Mesmo limite do schema (`visitanteSchema`): restringe o seletor de data nativo. */
+const DATA_NASCIMENTO_MINIMA = "1900-01-01";
+
+/** Data de hoje no fuso do aparelho, no formato do <input type="date"> (AAAA-MM-DD). */
+function hojeLocalISO(): string {
+  const agora = new Date();
+  const mes = String(agora.getMonth() + 1).padStart(2, "0");
+  const dia = String(agora.getDate()).padStart(2, "0");
+  return `${agora.getFullYear()}-${mes}-${dia}`;
+}
+
+const semAssinatura = () => () => {};
+
+/** Máscara leve: só dígitos, no máximo 8, com hífen depois do 5º ("81000-000"). */
+function mascararCEP(valor: string): string {
+  const digitos = valor.replace(/\D/g, "").slice(0, 8);
+  return digitos.length > 5 ? `${digitos.slice(0, 5)}-${digitos.slice(5)}` : digitos;
+}
 
 type FormularioVisitanteProps = {
   aoConcluir: (resultado: { nome: string; recorrente: boolean }) => void;
@@ -52,30 +74,51 @@ export function FormularioVisitante({ aoConcluir }: FormularioVisitanteProps) {
   const [erroEnvio, setErroEnvio] = useState<string | null>(null);
   const { buscar: buscarCEP, carregando: carregandoCEP, erro: erroCEP, setErro: setErroCEP } = useBuscaCEP();
 
+  /** CEP cujo endereço já foi aplicado — evita nova busca (e sobrescrever edições) a cada blur. */
+  const ultimoCEPPreenchido = useRef<string | null>(null);
+
+  /**
+   * Hoje no fuso do visitante, para o `max` da data de nascimento. No servidor
+   * o fuso é outro (UTC), então o valor só entra depois da hidratação — evita
+   * HTML divergente entre servidor e navegador perto da meia-noite.
+   */
+  const hoje = useSyncExternalStore(semAssinatura, hojeLocalISO, () => undefined);
+
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     setValue,
     setError,
+    setFocus,
     formState: { errors, isSubmitting },
   } = useForm<VisitanteInput>({
     resolver: zodResolver(visitanteSchema),
     defaultValues: VALORES_INICIAIS,
   });
 
-  const comoConheceu = watch("comoConheceu");
+  const comoConheceu = useWatch({ control, name: "comoConheceu" });
 
-  const aoPreencherCEP = async (cepRaw: string) => {
-    if (!cepRaw || cepRaw.replace(/\D/g, "").length !== 8) return;
+  // O CEP precisa de onChange (máscara) e onBlur (busca) próprios, sem perder
+  // os do React Hook Form — por isso os handlers do register são combinados.
+  const { onChange: onChangeCEP, onBlur: onBlurCEP, ...registroCEP } = register("cep");
 
-    const dados = await buscarCEP(cepRaw);
-    if (dados) {
-      setValue("endereco", dados.logradouro);
-      setValue("bairro", dados.bairro);
-      setValue("cidade", dados.cidade);
-      setErroCEP(null);
-    }
+  const aoPreencherCEP = async (cepDigitado: string) => {
+    const cep = cepDigitado.replace(/\D/g, "");
+    if (cep.length !== 8 || cep === ultimoCEPPreenchido.current) return;
+
+    const dados = await buscarCEP(cep);
+    if (!dados) return;
+
+    ultimoCEPPreenchido.current = cep;
+    const opcoes = { shouldValidate: true, shouldDirty: true } as const;
+    // Só preenche o que veio: CEP de cidade com CEP único volta sem logradouro
+    // nem bairro, e isso não pode apagar o que a pessoa já digitou.
+    if (dados.logradouro) setValue("endereco", dados.logradouro, opcoes);
+    if (dados.bairro) setValue("bairro", dados.bairro, opcoes);
+    if (dados.cidade) setValue("cidade", dados.cidade, opcoes);
+    // Com a rua preenchida, o próximo passo é o número; sem ela, a própria rua.
+    setFocus(dados.logradouro ? "numero" : "endereco");
   };
 
   const aoSubmeter = handleSubmit(async (dados) => {
@@ -198,6 +241,8 @@ export function FormularioVisitante({ aoConcluir }: FormularioVisitanteProps) {
           <input
             id="dataNascimento"
             type="date"
+            min={DATA_NASCIMENTO_MINIMA}
+            max={hoje}
             className={classeInput}
             aria-invalid={Boolean(errors.dataNascimento)}
             aria-describedby={errors.dataNascimento ? "dataNascimento-erro" : undefined}
@@ -215,20 +260,40 @@ export function FormularioVisitante({ aoConcluir }: FormularioVisitanteProps) {
         <Campo
           id="cep"
           rotulo="CEP (opcional)"
+          dica="Preencha para autocompletar o endereço."
           erro={errors.cep?.message || (erroCEP ? erroCEP : undefined)}
         >
+          {/*
+            readOnly (e não disabled) durante a busca: disabled tira o foco do
+            campo e faz o React Hook Form tratar o valor como undefined.
+          */}
           <input
             id="cep"
             type="text"
             inputMode="numeric"
-            placeholder="Preencha para autocompletar o endereço"
+            autoComplete="postal-code"
+            maxLength={9}
+            placeholder="00000-000"
             className={classeInput}
+            readOnly={carregandoCEP}
+            aria-busy={carregandoCEP}
             aria-invalid={Boolean(errors.cep || erroCEP)}
-            aria-describedby={errors.cep || erroCEP ? "cep-erro" : undefined}
-            disabled={carregandoCEP}
-            {...register("cep")}
-            onBlur={(e) => aoPreencherCEP(e.target.value)}
+            aria-describedby={errors.cep || erroCEP ? "cep-dica cep-erro" : "cep-dica"}
+            {...registroCEP}
+            onChange={(e) => {
+              const mascarado = mascararCEP(e.target.value);
+              if (mascarado !== e.target.value) e.target.value = mascarado;
+              if (erroCEP) setErroCEP(null);
+              void onChangeCEP(e);
+            }}
+            onBlur={(e) => {
+              void onBlurCEP(e);
+              void aoPreencherCEP(e.target.value);
+            }}
           />
+          <p aria-live="polite" className="text-sm text-ink-muted empty:sr-only">
+            {carregandoCEP && "Buscando endereço…"}
+          </p>
         </Campo>
 
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-[1fr_auto]">
@@ -363,6 +428,74 @@ export function FormularioVisitante({ aoConcluir }: FormularioVisitanteProps) {
             {...register("pedidoOracao")}
           />
         </Campo>
+      </section>
+
+      <section className="flex flex-col gap-5">
+        <h2 className="font-display text-lg font-semibold text-navy">Para finalizar</h2>
+
+        <div className="flex flex-col gap-2">
+          <OpcaoToggle
+            rotulo="Quero receber a confirmação do cadastro no WhatsApp"
+            className="py-3"
+            aria-describedby="aceitaWhatsApp-dica"
+            {...register("aceitaWhatsApp")}
+          />
+          <p id="aceitaWhatsApp-dica" className="text-sm text-ink-muted">
+            Opcional — a mensagem vai para o celular informado acima.
+          </p>
+        </div>
+
+        {/*
+          Consentimento LGPD: checkbox comum com label ao lado (e não o
+          OpcaoToggle) para o link do aviso funcionar dentro do texto.
+        */}
+        <div className="flex flex-col gap-1.5">
+          <div
+            className="flex items-start gap-3 rounded-xl border border-border bg-white px-4 py-4
+              has-[:checked]:border-gold has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-gold/40
+              has-[[aria-invalid=true]]:border-error"
+          >
+            <input
+              id="aceitaPrivacidade"
+              type="checkbox"
+              className="mt-0.5 size-5 shrink-0 cursor-pointer accent-gold-text"
+              aria-invalid={Boolean(errors.aceitaPrivacidade)}
+              aria-describedby={errors.aceitaPrivacidade ? "aceitaPrivacidade-erro" : undefined}
+              {...register("aceitaPrivacidade")}
+            />
+            <label
+              htmlFor="aceitaPrivacidade"
+              className="flex-1 cursor-pointer text-[15px] leading-snug text-navy"
+            >
+              Li e concordo com o{" "}
+              <a
+                href="/privacidade"
+                target="_blank"
+                rel="noopener"
+                className="font-medium underline decoration-gold underline-offset-2 hover:text-gold-text"
+              >
+                aviso de privacidade
+                <span className="sr-only"> (abre em nova aba)</span>
+              </a>
+              . Autorizo a {IGREJA.nome} a usar meus dados — inclusive informações sobre fé e
+              pedidos de oração — apenas para contato e acompanhamento pastoral.
+              <span aria-hidden="true" className="text-gold-text">
+                {" "}
+                *
+              </span>
+            </label>
+          </div>
+          {errors.aceitaPrivacidade && (
+            <p
+              id="aceitaPrivacidade-erro"
+              role="alert"
+              className="flex items-start gap-1.5 text-sm text-error"
+            >
+              <span aria-hidden="true">⚠</span>
+              <span>{errors.aceitaPrivacidade.message}</span>
+            </p>
+          )}
+        </div>
       </section>
 
       {erroEnvio && (

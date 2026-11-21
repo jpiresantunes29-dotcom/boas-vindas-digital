@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Fraunces, Inter } from "next/font/google";
 import "./globals.css";
 import { obterUrlSite } from "@/lib/seo/siteUrl";
+import { IGREJA } from "@/lib/config/igreja";
 
 const fraunces = Fraunces({
   variable: "--font-fraunces",
@@ -16,27 +17,26 @@ const inter = Inter({
   weight: ["400", "500", "600", "700"],
 });
 
-const TITULO = "Seja bem-vindo(a) | Aliança Cristã Curitiba";
-const DESCRICAO =
-  "Cadastro digital de visitantes da Aliança Cristã Curitiba — leva menos de 2 minutos. Deixe seus dados e nossa equipe entra em contato para o primeiro café.";
+const TITULO = `Seja bem-vindo(a) | ${IGREJA.nome}`;
+const DESCRICAO = `Cadastro digital de visitantes da ${IGREJA.nome} — leva menos de 2 minutos. Deixe seus dados e nossa equipe entra em contato para o primeiro café.`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(obterUrlSite()),
   title: {
     default: TITULO,
-    template: "%s | Aliança Cristã Curitiba",
+    template: `%s | ${IGREJA.nome}`,
   },
   description: DESCRICAO,
   keywords: [
-    "Aliança Cristã Curitiba",
-    "igreja em Curitiba",
-    "igreja Cidade Industrial de Curitiba",
+    IGREJA.nome,
+    `igreja em ${IGREJA.endereco.cidade}`,
+    `igreja ${IGREJA.endereco.bairro}`,
     "cadastro de visitantes",
     "primeira visita igreja",
-    "culto Curitiba",
+    `culto ${IGREJA.endereco.cidade}`,
   ],
-  authors: [{ name: "Aliança Cristã Curitiba" }],
-  applicationName: "Aliança Cristã Curitiba",
+  authors: [{ name: IGREJA.nome }],
+  applicationName: IGREJA.nome,
   category: "religion",
   alternates: { canonical: "/" },
   robots: {
@@ -48,7 +48,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "pt_BR",
     url: "/",
-    siteName: "Aliança Cristã Curitiba",
+    siteName: IGREJA.nome,
     title: TITULO,
     description: DESCRICAO,
     images: [
@@ -56,7 +56,7 @@ export const metadata: Metadata = {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "Aliança Cristã Curitiba",
+        alt: IGREJA.nome,
       },
     ],
   },
@@ -84,34 +84,34 @@ function jsonLdIgreja() {
   return {
     "@context": "https://schema.org",
     "@type": "Church",
-    name: "Aliança Cristã Curitiba",
+    name: IGREJA.nome,
     url,
     logo: `${url}/logo-alianca-crista.png`,
     image: `${url}/og-image.png`,
-    telephone: "+5541997479889",
+    telephone: `+${IGREJA.telefonePrincipal}`,
     address: {
       "@type": "PostalAddress",
-      streetAddress: "R. Dep. Cunha Bueno, 352",
-      addressLocality: "Curitiba",
-      addressRegion: "PR",
-      addressCountry: "BR",
+      streetAddress: IGREJA.endereco.logradouro,
+      addressLocality: IGREJA.endereco.cidade,
+      addressRegion: IGREJA.endereco.estado,
+      addressCountry: IGREJA.endereco.pais,
     },
-    sameAs: ["https://www.instagram.com/aliancacristacuritiba"],
-    openingHoursSpecification: [
-      {
-        "@type": "OpeningHoursSpecification",
-        dayOfWeek: "Wednesday",
-        opens: "20:00",
-        description: "Culto TOPP",
-      },
-      {
-        "@type": "OpeningHoursSpecification",
-        dayOfWeek: "Sunday",
-        opens: "19:00",
-        description: "Culto da Família",
-      },
-    ],
+    sameAs: [IGREJA.instagram.url],
+    openingHoursSpecification: IGREJA.cultos.map((culto) => ({
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: culto.diaSchemaOrg,
+      opens: culto.horario,
+      description: culto.nome,
+    })),
   };
+}
+
+/**
+ * Serializa o JSON-LD para dentro de um <script>. Escapar "<" impede que um
+ * valor contendo "</script>" feche a tag antes da hora e injete HTML.
+ */
+function serializarJsonLd(dados: unknown): string {
+  return JSON.stringify(dados).replace(/</g, "\\u003c");
 }
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -120,8 +120,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-screen antialiased">
         <script
           type="application/ld+json"
-          // eslint-disable-next-line react/no-danger
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdIgreja()) }}
+          dangerouslySetInnerHTML={{ __html: serializarJsonLd(jsonLdIgreja()) }}
         />
         {children}
       </body>

@@ -1,0 +1,50 @@
+# Verificação contínua: roda a cada push na main e em todo Pull Request.
+# Lint, tipos, testes e build de produção — se algo quebrar, aparece aqui
+# antes de chegar à Vercel.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verificar:
+    name: Lint, tipos, testes e build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_TELEMETRY_DISABLED: 1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Tipos
+        run: npm run typecheck
+
+      - name: Testes
+        run: npm test
+
+      # Sem variáveis de ambiente o build funciona normalmente: o Supabase só é
+      # exigido na hora de gravar um cadastro, e as notificações são opcionais.
+      - name: Build
+        run: npm run build

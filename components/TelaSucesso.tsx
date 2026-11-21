@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { Botao } from "@/components/ui/Botao";
+import { IGREJA, enderecoCompleto, linkWhatsApp } from "@/lib/config/igreja";
 
 type TelaSucessoProps = {
   nome: string;
@@ -6,18 +8,13 @@ type TelaSucessoProps = {
   aoVoltar: () => void;
 };
 
-const WHATSAPP_NUMEROS = [
-  { rotulo: "47 98845-5100", link: "https://wa.me/5547988455100" },
-  { rotulo: "41 99747-9889", link: "https://wa.me/5541997479889" },
-];
-
-const INSTAGRAM_URL = "https://www.instagram.com/aliancacristacuritiba";
+const CLASSE_LINK = "underline decoration-gold underline-offset-2 hover:text-gold-text";
 
 /**
  * Absorve o antigo QR "Saiba Mais" do cartão físico: depois do envio, o
  * visitante já engajado recebe os cultos e o contato da igreja aqui mesmo,
  * em vez de precisar escanear um segundo código (§15 / §20 do documento
- * de descoberta).
+ * de descoberta). Os dados vêm de lib/config/igreja.ts.
  */
 export function TelaSucesso({ nome, recorrente, aoVoltar }: TelaSucessoProps) {
   const primeiroNome = nome.trim().split(/\s+/)[0] ?? nome;
@@ -29,10 +26,10 @@ export function TelaSucesso({ nome, recorrente, aoVoltar }: TelaSucessoProps) {
           Que alegria ter você aqui, {primeiroNome}!
         </p>
         <blockquote className="mx-auto max-w-sm font-display italic text-ink-muted">
-          &ldquo;Há um só corpo e um só Espírito, como também fostes chamados em uma só
-          esperança da vossa vocação; um só Senhor, uma só fé, um só batismo; um só Deus e Pai
-          de todos, o qual é sobre todos, e por todos, e em todos.&rdquo;
-          <footer className="mt-2 text-sm not-italic text-gold-text">Efésios 4:4-6</footer>
+          &ldquo;{IGREJA.versiculoTema.texto}&rdquo;
+          <footer className="mt-2 text-sm not-italic text-gold-text">
+            {IGREJA.versiculoTema.referencia}
+          </footer>
         </blockquote>
         {recorrente && (
           <p className="text-sm text-ink-muted">Bom te ver de novo por aqui. 💛</p>
@@ -44,12 +41,14 @@ export function TelaSucesso({ nome, recorrente, aoVoltar }: TelaSucessoProps) {
           <p className="text-xs font-semibold uppercase tracking-wide text-gold-text">
             Nossos cultos
           </p>
-          <p className="text-[15px] text-navy">
-            <strong>Quarta-feira, 20h</strong> — Culto TOPP
-          </p>
-          <p className="text-[15px] text-navy">
-            <strong>Domingo, 19h</strong> — Culto da Família
-          </p>
+          {IGREJA.cultos.map((culto) => (
+            <p key={culto.diaSchemaOrg} className="text-[15px] text-navy">
+              <strong>
+                {culto.dia}, {culto.rotuloHorario}
+              </strong>{" "}
+              — {culto.nome}
+            </p>
+          ))}
         </div>
 
         <div className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-white px-6 py-5">
@@ -58,32 +57,30 @@ export function TelaSucesso({ nome, recorrente, aoVoltar }: TelaSucessoProps) {
           </p>
           <p className="text-[15px] text-navy">
             WhatsApp:{" "}
-            {WHATSAPP_NUMEROS.map((numero, indice) => (
-              <span key={numero.link}>
+            {IGREJA.whatsapp.map((contato, indice) => (
+              <span key={contato.numero}>
                 <a
-                  href={numero.link}
+                  href={linkWhatsApp(contato.numero)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="underline decoration-gold underline-offset-2 hover:text-gold-text"
+                  className={CLASSE_LINK}
                 >
-                  {numero.rotulo}
+                  {contato.rotulo}
                 </a>
-                {indice < WHATSAPP_NUMEROS.length - 1 && " / "}
+                {indice < IGREJA.whatsapp.length - 1 && " / "}
               </span>
             ))}
           </p>
-          <p className="text-[15px] text-navy">
-            R. Dep. Cunha Bueno, 352 — Cidade Industrial de Curitiba
-          </p>
+          <p className="text-[15px] text-navy">{enderecoCompleto()}</p>
           <p className="text-[15px] text-navy">
             Instagram{" "}
             <a
-              href={INSTAGRAM_URL}
+              href={IGREJA.instagram.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="underline decoration-gold underline-offset-2 hover:text-gold-text"
+              className={CLASSE_LINK}
             >
-              @aliancacristacuritiba
+              @{IGREJA.instagram.usuario}
             </a>
           </p>
         </div>
@@ -92,6 +89,12 @@ export function TelaSucesso({ nome, recorrente, aoVoltar }: TelaSucessoProps) {
       <Botao variante="secundario" onClick={aoVoltar}>
         Voltar ao início
       </Botao>
+
+      <p className="text-xs text-ink-muted">
+        <Link href="/privacidade" className="underline underline-offset-2 hover:text-navy">
+          Aviso de privacidade
+        </Link>
+      </p>
     </div>
   );
 }

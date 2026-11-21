@@ -13,8 +13,21 @@ const BASE_VALIDA = {
   desejaSeUnir: true,
   desejaReceberVisita: false,
   pedidoOracao: "",
+  aceitaPrivacidade: true,
   empresa: "",
 };
+
+/** Mensagens de erro do resultado, por campo (primeiro nível do path). */
+function mensagensPorCampo(dados: unknown): Record<string, string[]> {
+  const resultado = visitanteSchema.safeParse(dados);
+  if (resultado.success) return {};
+  const mensagens: Record<string, string[]> = {};
+  for (const problema of resultado.error.issues) {
+    const campo = String(problema.path[0] ?? "form");
+    (mensagens[campo] ??= []).push(problema.message);
+  }
+  return mensagens;
+}
 
 describe("normalizarCelular", () => {
   it("remove tudo que não é dígito", () => {
@@ -108,6 +121,70 @@ describe("visitanteSchema", () => {
 
   it("rejeita quando o campo honeypot vem preenchido", () => {
     const resultado = visitanteSchema.safeParse({ ...BASE_VALIDA, empresa: "spam" });
+    expect(resultado.success).toBe(false);
+  });
+
+  it("exige o consentimento com o aviso de privacidade", () => {
+    expect(mensagensPorCampo({ ...BASE_VALIDA, aceitaPrivacidade: false }).aceitaPrivacidade).toEqual([
+      "Para enviar, confirme que leu e concorda com o aviso de privacidade.",
+    ]);
+
+    const semCampo: Record<string, unknown> = { ...BASE_VALIDA };
+    delete semCampo.aceitaPrivacidade;
+    expect(visitanteSchema.safeParse(semCampo).success).toBe(false);
+  });
+
+  it("deixa aceitaWhatsApp como false quando não é informado (opt-in)", () => {
+    const resultado = visitanteSchema.safeParse(BASE_VALIDA);
+    expect(resultado.success).toBe(true);
+    if (resultado.success) {
+      expect(resultado.data.aceitaWhatsApp).toBe(false);
+    }
+  });
+
+  it("mantém aceitaWhatsApp como true quando o visitante marca a opção", () => {
+    const resultado = visitanteSchema.safeParse({ ...BASE_VALIDA, aceitaWhatsApp: true });
+    expect(resultado.success).toBe(true);
+    if (resultado.success) {
+      expect(resultado.data.aceitaWhatsApp).toBe(true);
+    }
+  });
+
+  it("normaliza o CEP com hífen para só os 8 dígitos", () => {
+    const resultado = visitanteSchema.safeParse({ ...BASE_VALIDA, cep: "81000-000" });
+    expect(resultado.success).toBe(true);
+    if (resultado.success) {
+      expect(resultado.data.cep).toBe("81000000");
+    }
+  });
+
+  it("aceita CEP em branco, por ser opcional", () => {
+    const resultado = visitanteSchema.safeParse({ ...BASE_VALIDA, cep: "" });
+    expect(resultado.success).toBe(true);
+    if (resultado.success) {
+      expect(resultado.data.cep).toBe("");
+    }
+  });
+
+  it("rejeita CEP com dígitos faltando", () => {
+    expect(mensagensPorCampo({ ...BASE_VALIDA, cep: "81000-00" }).cep).toEqual([
+      "CEP deve ter 8 dígitos.",
+    ]);
+  });
+
+  it("rejeita data de nascimento antes de 1900", () => {
+    expect(
+      mensagensPorCampo({ ...BASE_VALIDA, dataNascimento: "1899-12-31" }).dataNascimento
+    ).toEqual(["Confira o ano de nascimento."]);
+  });
+
+  it("aceita data de nascimento em 1900-01-01, o limite mínimo", () => {
+    const resultado = visitanteSchema.safeParse({ ...BASE_VALIDA, dataNascimento: "1900-01-01" });
+    expect(resultado.success).toBe(true);
+  });
+
+  it("rejeita data fora do formato AAAA-MM-DD", () => {
+    const resultado = visitanteSchema.safeParse({ ...BASE_VALIDA, dataNascimento: "20/05/1990" });
     expect(resultado.success).toBe(false);
   });
 });

@@ -7,8 +7,30 @@ import {
   TIPO_MORADIA_ROTULOS,
 } from "@/lib/validacao/visitanteSchema";
 
+const SEXO_ROTULOS: Record<NonNullable<VisitanteValidado["sexo"]>, string> = {
+  masculino: "Masculino",
+  feminino: "Feminino",
+};
+
 function linkWhatsApp(celular: string): string {
   return `https://wa.me/55${celular}`;
+}
+
+/**
+ * "1990-05-20" → "20/05/1990". Trabalha só com a string: passar por `Date`
+ * interpretaria o valor como meia-noite UTC e, no fuso de Brasília, a data
+ * poderia "voltar" um dia.
+ */
+function formatarData(valor: string): string {
+  const partes = /^(\d{4})-(\d{2})-(\d{2})$/.exec(valor);
+  if (!partes) return valor;
+  const [, ano, mes, dia] = partes;
+  return `${dia}/${mes}/${ano}`;
+}
+
+/** "81000000" → "81000-000". */
+function formatarCep(cep: string): string {
+  return cep.length === 8 ? `${cep.slice(0, 5)}-${cep.slice(5)}` : cep;
 }
 
 function montarHtml(dados: VisitanteValidado, recorrente: boolean): string {
@@ -20,11 +42,17 @@ function montarHtml(dados: VisitanteValidado, recorrente: boolean): string {
       dados.celular
     )}</a></p>`
   );
+  linhas.push(
+    `<p><strong>Aceita receber WhatsApp:</strong> ${dados.aceitaWhatsApp ? "Sim" : "Não"}</p>`
+  );
   if (dados.email) linhas.push(`<p><strong>E-mail:</strong> ${escapeHtml(dados.email)}</p>`);
+  if (dados.sexo) linhas.push(`<p><strong>Sexo:</strong> ${SEXO_ROTULOS[dados.sexo]}</p>`);
   if (dados.estadoCivil)
     linhas.push(`<p><strong>Estado civil:</strong> ${ESTADO_CIVIL_ROTULOS[dados.estadoCivil]}</p>`);
   if (dados.dataNascimento)
-    linhas.push(`<p><strong>Data de nascimento:</strong> ${escapeHtml(dados.dataNascimento)}</p>`);
+    linhas.push(
+      `<p><strong>Data de nascimento:</strong> ${escapeHtml(formatarData(dados.dataNascimento))}</p>`
+    );
   linhas.push(
     `<p><strong>Endereço:</strong> ${escapeHtml(
       [
@@ -32,6 +60,7 @@ function montarHtml(dados: VisitanteValidado, recorrente: boolean): string {
         dados.complemento,
         dados.bairro,
         dados.cidade,
+        dados.cep && `CEP ${formatarCep(dados.cep)}`,
       ]
         .filter(Boolean)
         .join(", ")
@@ -71,7 +100,8 @@ function escapeHtml(valor: string): string {
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 /**
@@ -102,7 +132,10 @@ export async function notificarNovoVisitante(
 
   try {
     const resend = new Resend(apiKey);
-    await resend.emails.send({
+    // O SDK do Resend não lança exceção em erro da API (chave inválida,
+    // remetente não verificado, cota estourada...): devolve `{ data, error }`.
+    // Sem checar `error`, a falha passaria em silêncio.
+    const { error } = await resend.emails.send({
       from: remetente,
       to: destinatarios,
       subject: recorrente
@@ -110,7 +143,12 @@ export async function notificarNovoVisitante(
         : `Novo visitante: ${dados.nome}`,
       html: montarHtml(dados, recorrente),
     });
+
+    if (error) {
+      console.error("Falha ao enviar notificação por e-mail (Resend):", error);
+    }
   } catch (erro) {
+    // Falhas de rede ou inesperadas do SDK.
     console.error("Falha ao enviar notificação por e-mail:", erro);
   }
 }
