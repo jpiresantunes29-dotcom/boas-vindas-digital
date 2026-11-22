@@ -90,6 +90,8 @@ migrations/
   0001_criar_visitantes.sql            Schema da tabela `visitantes`
   0002_adicionar_numero_endereco.sql   Número, complemento e tipo de moradia
   0003_consentimento_e_cep.sql         CEP, opt-in de WhatsApp e consentimento LGPD
+docs/whatsapp-evolution.md           Guia de instalação do WhatsApp (Neon + Render + cron-job.org)
+render.yaml                          Blueprint da Render para o servidor da Evolution API
 .github/workflows/ci.yml          CI: lint, tipos, testes e build
 next.config.ts                    Headers de segurança (CSP, HSTS etc.)
 docs/original/                    Folha física original (.docx), para referência histórica
@@ -179,11 +181,14 @@ Detalhes que já estão tratados no código:
 - Datas e horas das mensagens no fuso `America/Sao_Paulo` (a Vercel roda em UTC).
 - O celular do visitante ganha o DDI 55 corretamente, inclusive quando o DDD também é 55 (região de Santa Maria/RS).
 
-Usa a [Evolution API](https://doc.evolution-api.com/), uma solução open source gratuita. Para ativar:
+Usa a [Evolution API](https://doc.evolution-api.com/), uma solução open source gratuita. **Guia completo, passo a passo e sem custo (Neon + Render + cron-job.org): [`docs/whatsapp-evolution.md`](docs/whatsapp-evolution.md).** O servidor sobe na Render a partir do Blueprint [`render.yaml`](render.yaml), que já traz a imagem correta (`evoapicloud/evolution-api`) e todas as variáveis — só a chave e a string do banco são pedidas na criação.
 
-1. Instale a Evolution API em um servidor (Docker, VPS) — veja a [documentação](https://doc.evolution-api.com/).
-2. Crie uma instância e conecte o WhatsApp da igreja a ela (leitura do QR Code pelo app do WhatsApp).
-3. Configure as variáveis de ambiente no `.env.local` (e na Vercel):
+Resumo:
+
+1. Crie o banco no Neon e use a string de conexão **direta** (sem `-pooler`).
+2. Suba a Evolution API na Render pelo Blueprint (`render.yaml`) e mantenha-a acordada com um ping a cada 10 minutos (cron-job.org).
+3. Crie uma instância no painel `/manager` da Evolution e conecte o WhatsApp **da igreja** pelo QR Code.
+4. Configure as variáveis de ambiente no `.env.local` (e na Vercel):
    ```
    EVOLUTION_API_URL=https://evolution.suaigreja.com.br
    EVOLUTION_API_KEY=sua-chave-api

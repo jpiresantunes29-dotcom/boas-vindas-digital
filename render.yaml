@@ -1,0 +1,80 @@
+# Render Blueprint — servidor de WhatsApp (Evolution API) do cadastro de visitantes.
+#
+# Este arquivo NÃO afeta o site (que roda na Vercel). Ele só é lido pela Render
+# quando você cria um Blueprint a partir deste repositório: Render → New → Blueprint.
+# Passo a passo completo em docs/whatsapp-evolution.md.
+#
+# Na criação, a Render pede só os dois valores secretos (sync: false):
+#   - AUTHENTICATION_API_KEY  → a chave da Evolution API (a mesma que vai em EVOLUTION_API_KEY na Vercel)
+#   - DATABASE_CONNECTION_URI → a string de conexão DIRETA do Neon (sem "-pooler", só com ?sslmode=require)
+
+services:
+  - type: web
+    runtime: image
+    name: evolution-aliancacrista
+    plan: free
+    # A Render não tem região na América do Sul; Virginia é a mais próxima do Neon em São Paulo.
+    region: virginia
+    # A imagem oficial mudou de atendai/evolution-api para evoapicloud/evolution-api na v2.3.0.
+    # A antiga parou na v2.2.3 e há relatos de falha ao criar o container.
+    image:
+      url: docker.io/evoapicloud/evolution-api:latest
+    healthCheckPath: /
+    envVars:
+      # --- Servidor ---
+      - key: PORT
+        value: "8080"
+      - key: SERVER_PORT
+        value: "8080"
+      # Se a Render der outro endereço ao serviço (ex.: com sufixo), corrija aqui no painel.
+      - key: SERVER_URL
+        value: https://evolution-aliancacrista.onrender.com
+
+      # --- Autenticação (secreta — preenchida na criação do Blueprint) ---
+      - key: AUTHENTICATION_API_KEY
+        sync: false
+
+      # --- Banco de dados (Neon) ---
+      - key: DATABASE_ENABLED
+        value: "true"
+      - key: DATABASE_PROVIDER
+        value: postgresql
+      - key: DATABASE_CONNECTION_URI
+        sync: false
+      - key: DATABASE_CONNECTION_CLIENT_NAME
+        value: evolution_igreja
+      # Essencial: a Render gratuita apaga o disco a cada reinício. Com isto, a
+      # sessão do WhatsApp fica no banco e não é preciso escanear o QR de novo.
+      - key: DATABASE_SAVE_DATA_INSTANCE
+        value: "true"
+      # Não copiar conversas, contatos e mensagens do WhatsApp da igreja para o
+      # banco: melhor para a privacidade (LGPD) e mantém o Neon gratuito pequeno.
+      - key: DATABASE_SAVE_DATA_NEW_MESSAGE
+        value: "false"
+      - key: DATABASE_SAVE_MESSAGE_UPDATE
+        value: "false"
+      - key: DATABASE_SAVE_DATA_CONTACTS
+        value: "false"
+      - key: DATABASE_SAVE_DATA_CHATS
+        value: "false"
+      - key: DATABASE_SAVE_DATA_LABELS
+        value: "false"
+      - key: DATABASE_SAVE_DATA_HISTORIC
+        value: "false"
+
+      # --- Cache (sem Redis: cache em memória basta para este volume) ---
+      - key: CACHE_REDIS_ENABLED
+        value: "false"
+      - key: CACHE_LOCAL_ENABLED
+        value: "true"
+
+      # --- Sessão do WhatsApp ---
+      # Nunca apagar a instância automaticamente por inatividade.
+      - key: DEL_INSTANCE
+        value: "false"
+      # Nome que aparece em WhatsApp → Aparelhos conectados.
+      - key: CONFIG_SESSION_PHONE_CLIENT
+        value: Cadastro Visitantes
+
+      - key: TELEMETRY_ENABLED
+        value: "false"

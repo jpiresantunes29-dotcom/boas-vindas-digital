@@ -15,8 +15,13 @@ import { IGREJA } from "@/lib/config/igreja";
  * bundle de cliente: a build falha se este arquivo for importado por lá.
  */
 
-/** Tempo máximo de espera pela Evolution API antes de desistir do envio. */
-const TIMEOUT_MS = 8000;
+/**
+ * Tempo máximo de espera pela Evolution API antes de desistir do envio.
+ * Generoso de propósito: o envio roda em `after()`, depois da resposta ao
+ * visitante, então esperar não atrasa ninguém — e um servidor gratuito (ex.:
+ * Render) que estava dormindo pode levar algumas dezenas de segundos para acordar.
+ */
+const TIMEOUT_MS = 25_000;
 
 /**
  * Remove caracteres especiais e formata o número para o padrão Evolution API
