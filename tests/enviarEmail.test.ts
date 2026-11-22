@@ -49,6 +49,7 @@ beforeEach(() => {
   mocks.send.mockReset();
   mocks.send.mockResolvedValue({ data: { id: "email-1" }, error: null, headers: null });
   vi.spyOn(console, "error").mockImplementation(() => {});
+  vi.spyOn(console, "info").mockImplementation(() => {});
 });
 
 afterEach(() => {
@@ -68,6 +69,41 @@ describe("notificarNovoVisitante", () => {
     await expect(notificarNovoVisitante(visitante(), false)).resolves.toBeUndefined();
 
     expect(console.error).toHaveBeenCalledWith(expect.any(String), erroResend);
+  });
+
+  it("usa o remetente padrão quando RESEND_EMAIL_REMETENTE existe mas está vazia", async () => {
+    vi.stubEnv("RESEND_EMAIL_REMETENTE", "  ");
+
+    await notificarNovoVisitante(visitante(), false);
+
+    expect(mocks.send.mock.calls[0][0].from).toBe("onboarding@resend.dev");
+  });
+
+  it("envia um e-mail por destinatário: a recusa de um não impede o outro", async () => {
+    vi.stubEnv("NOTIFICACAO_EMAIL_ADMIN", " admin@exemplo.com ");
+    mocks.send.mockImplementation(async ({ to }: { to: string[] }) =>
+      to[0] === "admin@exemplo.com"
+        ? { data: null, error: { name: "validation_error", message: "403" }, headers: null }
+        : { data: { id: "ok" }, error: null, headers: null }
+    );
+
+    await notificarNovoVisitante(visitante(), false);
+
+    expect(mocks.send).toHaveBeenCalledTimes(2);
+    expect(mocks.send.mock.calls.map((c) => c[0].to)).toEqual([
+      ["pastor@exemplo.com"],
+      ["admin@exemplo.com"],
+    ]);
+    expect(console.error).toHaveBeenCalledTimes(1);
+    expect(console.info).toHaveBeenCalledWith(expect.stringContaining("p***@exemplo.com"));
+  });
+
+  it("não duplica o envio quando principal e admin são o mesmo e-mail", async () => {
+    vi.stubEnv("NOTIFICACAO_EMAIL_ADMIN", "pastor@exemplo.com");
+
+    await notificarNovoVisitante(visitante(), false);
+
+    expect(mocks.send).toHaveBeenCalledTimes(1);
   });
 
   it("registra no log e não lança quando o SDK lança (ex.: falha de rede)", async () => {

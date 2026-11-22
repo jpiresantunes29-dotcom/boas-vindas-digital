@@ -114,41 +114,75 @@ export async function notificarNovoVisitante(
   dados: VisitanteValidado,
   recorrente: boolean
 ): Promise<void> {
-  const apiKey = process.env.RESEND_API_KEY;
-  const destinatarioPrincipal = process.env.NOTIFICACAO_EMAIL_PRINCIPAL;
-  const destinatarioAdmin = process.env.NOTIFICACAO_EMAIL_ADMIN;
-  const remetente = process.env.RESEND_EMAIL_REMETENTE ?? "onboarding@resend.dev";
+  const apiKey = lerEnv("RESEND_API_KEY");
+  // `||` e não `??`: uma variável criada vazia na Vercel chega como "" e
+  // derrubaria o envio com um remetente em branco.
+  const remetente = lerEnv("RESEND_EMAIL_REMETENTE") || REMETENTE_PADRAO;
+  const destinatarios = [
+    ...new Set(
+      [lerEnv("NOTIFICACAO_EMAIL_PRINCIPAL"), lerEnv("NOTIFICACAO_EMAIL_ADMIN")].filter(
+        (endereco): endereco is string => Boolean(endereco)
+      )
+    ),
+  ];
 
-  if (!apiKey || !destinatarioPrincipal) {
+  if (!apiKey || destinatarios.length === 0) {
     console.error(
-      "Notificação não enviada: RESEND_API_KEY ou NOTIFICACAO_EMAIL_PRINCIPAL ausente."
+      "[E-mail] Notificação não enviada: RESEND_API_KEY ou NOTIFICACAO_EMAIL_PRINCIPAL ausente."
     );
     return;
   }
 
-  const destinatarios = [destinatarioPrincipal, destinatarioAdmin].filter(
-    (endereco): endereco is string => Boolean(endereco)
+  const resend = new Resend(apiKey);
+  const assunto = recorrente
+    ? `Visitante recorrente: ${dados.nome}`
+    : `Novo visitante: ${dados.nome}`;
+  const html = montarHtml(dados, recorrente);
+
+  // Um envio por destinatário: se um endereço for recusado (ex.: o domínio de
+  // testes resend.dev só entrega para o e-mail dono da conta), os outros
+  // continuam recebendo.
+  await Promise.all(
+    destinatarios.map(async (destinatario) => {
+      try {
+        // O SDK do Resend não lança exceção em erro da API (chave inválida,
+        // remetente não verificado, cota estourada...): devolve `{ data, error }`.
+        const { data, error } = await resend.emails.send({
+          from: remetente,
+          to: [destinatario],
+          subject: assunto,
+          html,
+        });
+
+        if (error) {
+          console.error(
+            `[E-mail] Falha ao enviar para ${mascararEmail(destinatario)} (remetente ${remetente}):`,
+            error
+          );
+          return;
+        }
+        console.info(
+          `[E-mail] Aviso enviado para ${mascararEmail(destinatario)} (id ${data?.id ?? "?"}).`
+        );
+      } catch (erro) {
+        // Falhas de rede ou inesperadas do SDK.
+        console.error(`[E-mail] Falha ao enviar para ${mascararEmail(destinatario)}:`, erro);
+      }
+    })
   );
+}
 
-  try {
-    const resend = new Resend(apiKey);
-    // O SDK do Resend não lança exceção em erro da API (chave inválida,
-    // remetente não verificado, cota estourada...): devolve `{ data, error }`.
-    // Sem checar `error`, a falha passaria em silêncio.
-    const { error } = await resend.emails.send({
-      from: remetente,
-      to: destinatarios,
-      subject: recorrente
-        ? `Visitante recorrente: ${dados.nome}`
-        : `Novo visitante: ${dados.nome}`,
-      html: montarHtml(dados, recorrente),
-    });
+const REMETENTE_PADRAO = "onboarding@resend.dev";
 
-    if (error) {
-      console.error("Falha ao enviar notificação por e-mail (Resend):", error);
-    }
-  } catch (erro) {
-    // Falhas de rede ou inesperadas do SDK.
-    console.error("Falha ao enviar notificação por e-mail:", erro);
-  }
+/** Lê uma variável de ambiente sem espaços nas pontas; vazia vira `undefined`. */
+function lerEnv(nome: string): string | undefined {
+  const valor = process.env[nome]?.trim();
+  return valor ? valor : undefined;
+}
+
+/** "pastor@exemplo.com" → "p***@exemplo.com" — identifica sem expor no log. */
+export function mascararEmail(endereco: string): string {
+  const [usuario, dominio] = endereco.split("@");
+  if (!dominio) return "***";
+  return `${usuario.slice(0, 1)}***@${dominio}`;
 }
