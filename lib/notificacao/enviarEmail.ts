@@ -119,16 +119,15 @@ export async function notificarNovoVisitante(
   // derrubaria o envio com um remetente em branco.
   const remetente = lerEnv("RESEND_EMAIL_REMETENTE") || REMETENTE_PADRAO;
   const destinatarios = [
-    ...new Set(
-      [lerEnv("NOTIFICACAO_EMAIL_PRINCIPAL"), lerEnv("NOTIFICACAO_EMAIL_ADMIN")].filter(
-        (endereco): endereco is string => Boolean(endereco)
-      )
-    ),
+    ...new Set([
+      ...lerEmails("NOTIFICACAO_EMAIL_PRINCIPAL"),
+      ...lerEmails("NOTIFICACAO_EMAIL_ADMIN"),
+    ]),
   ];
 
   if (!apiKey || destinatarios.length === 0) {
     console.error(
-      "[E-mail] Notificação não enviada: RESEND_API_KEY ou NOTIFICACAO_EMAIL_PRINCIPAL ausente."
+      "[E-mail] Notificação não enviada: RESEND_API_KEY ausente ou nenhum e-mail válido em NOTIFICACAO_EMAIL_PRINCIPAL / NOTIFICACAO_EMAIL_ADMIN."
     );
     return;
   }
@@ -178,6 +177,42 @@ const REMETENTE_PADRAO = "onboarding@resend.dev";
 function lerEnv(nome: string): string | undefined {
   const valor = process.env[nome]?.trim();
   return valor ? valor : undefined;
+}
+
+const FORMATO_EMAIL = /^[^\s@<>"',;]+@[^\s@<>"',;]+\.[^\s@<>"',;]+$/;
+
+/**
+ * Lê os e-mails de uma variável de ambiente, tolerando erros comuns ao colar
+ * o valor no painel da Vercel: aspas, "mailto:", "Nome <email>", espaços e
+ * vários endereços separados por vírgula ou ponto e vírgula. Valores que
+ * continuam inválidos são descartados com um aviso no log que diz qual
+ * variável corrigir (o Resend recusaria o envio inteiro com erro 422).
+ */
+export function lerEmails(nome: string): string[] {
+  const bruto = lerEnv(nome);
+  if (!bruto) return [];
+
+  const validos: string[] = [];
+  for (const parte of bruto.split(/[,;\n]+/)) {
+    const limpo = parte
+      .trim()
+      .replace(/^.*<([^>]*)>.*$/, "$1") // "Nome <email>" → "email"
+      .replace(/^["']+|["']+$/g, "")
+      .replace(/^mailto:/i, "")
+      .trim()
+      .toLowerCase();
+    if (!limpo) continue;
+    if (FORMATO_EMAIL.test(limpo)) {
+      validos.push(limpo);
+    } else {
+      console.error(
+        `[E-mail] ${nome} não contém um e-mail válido (valor com ${limpo.length} caracteres${
+          limpo.includes("@") ? "" : ", sem @"
+        }). Corrija o valor na Vercel e faça o Redeploy.`
+      );
+    }
+  }
+  return validos;
 }
 
 /** "pastor@exemplo.com" → "p***@exemplo.com" — identifica sem expor no log. */

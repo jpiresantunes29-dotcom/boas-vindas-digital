@@ -14,7 +14,7 @@ vi.mock("resend", () => ({
   },
 }));
 
-import { notificarNovoVisitante } from "@/lib/notificacao/enviarEmail";
+import { lerEmails, notificarNovoVisitante } from "@/lib/notificacao/enviarEmail";
 
 const ENTRADA_BASE: VisitanteInput = {
   nome: "Maria da Silva",
@@ -170,5 +170,29 @@ describe("notificarNovoVisitante", () => {
     expect(html).toContain("<strong>Aceita receber WhatsApp:</strong> Sim");
     expect(html).not.toContain("CEP");
     expect(mocks.send.mock.calls[0][0].subject).toBe("Visitante recorrente: Maria da Silva");
+  });
+});
+
+describe("lerEmails", () => {
+  it.each([
+    ["pastor@exemplo.com", ["pastor@exemplo.com"]],
+    ['  "Pastor@Exemplo.com"  ', ["pastor@exemplo.com"]],
+    ["mailto:pastor@exemplo.com", ["pastor@exemplo.com"]],
+    ["Pastor João <pastor@exemplo.com>", ["pastor@exemplo.com"]],
+    ["a@exemplo.com, b@exemplo.com; c@exemplo.com", ["a@exemplo.com", "b@exemplo.com", "c@exemplo.com"]],
+  ])("normaliza %j", (valor, esperado) => {
+    vi.stubEnv("NOTIFICACAO_EMAIL_PRINCIPAL", valor);
+    expect(lerEmails("NOTIFICACAO_EMAIL_PRINCIPAL")).toEqual(esperado);
+    expect(console.error).not.toHaveBeenCalled();
+  });
+
+  it("descarta valor inválido e diz no log qual variável corrigir", async () => {
+    vi.stubEnv("NOTIFICACAO_EMAIL_ADMIN", "pastor exemplo.com");
+
+    await notificarNovoVisitante(visitante(), false);
+
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining("NOTIFICACAO_EMAIL_ADMIN"));
+    expect(mocks.send).toHaveBeenCalledTimes(1);
+    expect(mocks.send.mock.calls[0][0].to).toEqual(["pastor@exemplo.com"]);
   });
 });
