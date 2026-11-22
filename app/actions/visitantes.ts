@@ -150,7 +150,7 @@ export async function cadastrarVisitante(dados: VisitanteInput): Promise<Resulta
 
     const numeroResponsavel = process.env.NOTIFICACAO_WHATSAPP_NUMERO?.trim();
     if (numeroResponsavel) {
-      envios.push(notificarResponsavel(visitante.nome, visitante.celular, numeroResponsavel));
+      envios.push(notificarResponsavel(visitante, recorrente, numeroResponsavel));
     }
 
     const resultados = await Promise.allSettled(envios);

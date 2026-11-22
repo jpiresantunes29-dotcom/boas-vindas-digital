@@ -1,93 +1,18 @@
 import "server-only";
 import { Resend } from "resend";
 import type { VisitanteValidado } from "@/lib/validacao/visitanteSchema";
-import {
-  ESTADO_CIVIL_ROTULOS,
-  COMO_CONHECEU_ROTULOS,
-  TIPO_MORADIA_ROTULOS,
-} from "@/lib/validacao/visitanteSchema";
-
-const SEXO_ROTULOS: Record<NonNullable<VisitanteValidado["sexo"]>, string> = {
-  masculino: "Masculino",
-  feminino: "Feminino",
-};
-
-function linkWhatsApp(celular: string): string {
-  return `https://wa.me/55${celular}`;
-}
-
-/**
- * "1990-05-20" → "20/05/1990". Trabalha só com a string: passar por `Date`
- * interpretaria o valor como meia-noite UTC e, no fuso de Brasília, a data
- * poderia "voltar" um dia.
- */
-function formatarData(valor: string): string {
-  const partes = /^(\d{4})-(\d{2})-(\d{2})$/.exec(valor);
-  if (!partes) return valor;
-  const [, ano, mes, dia] = partes;
-  return `${dia}/${mes}/${ano}`;
-}
-
-/** "81000000" → "81000-000". */
-function formatarCep(cep: string): string {
-  return cep.length === 8 ? `${cep.slice(0, 5)}-${cep.slice(5)}` : cep;
-}
+import { AVISO_RECORRENTE, montarFichaVisitante } from "@/lib/notificacao/fichaVisitante";
 
 function montarHtml(dados: VisitanteValidado, recorrente: boolean): string {
-  const linhas: string[] = [];
-
-  linhas.push(`<p><strong>Nome:</strong> ${escapeHtml(dados.nome)}</p>`);
-  linhas.push(
-    `<p><strong>Celular:</strong> <a href="${linkWhatsApp(dados.celular)}">${escapeHtml(
-      dados.celular
-    )}</a></p>`
-  );
-  linhas.push(
-    `<p><strong>Aceita receber WhatsApp:</strong> ${dados.aceitaWhatsApp ? "Sim" : "Não"}</p>`
-  );
-  if (dados.email) linhas.push(`<p><strong>E-mail:</strong> ${escapeHtml(dados.email)}</p>`);
-  if (dados.sexo) linhas.push(`<p><strong>Sexo:</strong> ${SEXO_ROTULOS[dados.sexo]}</p>`);
-  if (dados.estadoCivil)
-    linhas.push(`<p><strong>Estado civil:</strong> ${ESTADO_CIVIL_ROTULOS[dados.estadoCivil]}</p>`);
-  if (dados.dataNascimento)
-    linhas.push(
-      `<p><strong>Data de nascimento:</strong> ${escapeHtml(formatarData(dados.dataNascimento))}</p>`
-    );
-  linhas.push(
-    `<p><strong>Endereço:</strong> ${escapeHtml(
-      [
-        [dados.endereco, dados.numero].filter(Boolean).join(", "),
-        dados.complemento,
-        dados.bairro,
-        dados.cidade,
-        dados.cep && `CEP ${formatarCep(dados.cep)}`,
-      ]
-        .filter(Boolean)
-        .join(", ")
-    )}</p>`
-  );
-  if (dados.tipoMoradia)
-    linhas.push(`<p><strong>Tipo de moradia:</strong> ${TIPO_MORADIA_ROTULOS[dados.tipoMoradia]}</p>`);
-  if (dados.comoConheceu)
-    linhas.push(`<p><strong>Como conheceu a igreja:</strong> ${COMO_CONHECEU_ROTULOS[dados.comoConheceu]}</p>`);
-  if (dados.convidadoPor)
-    linhas.push(`<p><strong>Convidado por:</strong> ${escapeHtml(dados.convidadoPor)}</p>`);
-  if (dados.outraIgreja)
-    linhas.push(`<p><strong>Pertence a outra igreja:</strong> ${escapeHtml(dados.outraIgreja)}</p>`);
-
-  const desejos = [
-    dados.desejaSeUnir && "Unir-se à igreja",
-    dados.desejaReceberVisita && "Receber visita",
-  ].filter(Boolean);
-  linhas.push(`<p><strong>Gostaria de:</strong> ${desejos.join(" · ")}</p>`);
-
-  if (dados.pedidoOracao)
-    linhas.push(`<p><strong>Pedido de oração:</strong> ${escapeHtml(dados.pedidoOracao)}</p>`);
+  const linhas = montarFichaVisitante(dados).map(({ rotulo, valor, link }) => {
+    const conteudo = link
+      ? `<a href="${escapeHtml(link)}">${escapeHtml(valor)}</a>`
+      : escapeHtml(valor);
+    return `<p><strong>${escapeHtml(rotulo)}:</strong> ${conteudo}</p>`;
+  });
 
   if (recorrente)
-    linhas.push(
-      `<p style="color:#946A08"><strong>⟳ Este celular já apareceu em um cadastro anterior — visitante recorrente.</strong></p>`
-    );
+    linhas.push(`<p style="color:#946A08"><strong>⟳ ${AVISO_RECORRENTE}</strong></p>`);
 
   return `<div style="font-family:Arial,sans-serif;font-size:15px;color:#16213E;line-height:1.6">
     <h2 style="margin-bottom:4px">Novo cadastro de visitante</h2>

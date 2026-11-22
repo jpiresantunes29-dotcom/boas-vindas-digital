@@ -1,5 +1,12 @@
 import "server-only";
 import { IGREJA } from "@/lib/config/igreja";
+import type { VisitanteValidado } from "@/lib/validacao/visitanteSchema";
+import {
+  AVISO_RECORRENTE,
+  formatarCelular,
+  linkWhatsAppVisitante,
+  montarFichaVisitante,
+} from "@/lib/notificacao/fichaVisitante";
 
 /**
  * Envia notificações via WhatsApp usando Evolution API.
@@ -135,16 +142,25 @@ export async function notificarVisitante(
 }
 
 /**
- * Notifica o responsável sobre um novo visitante.
+ * Envia ao responsável a ficha completa do novo visitante — as mesmas
+ * informações do e-mail — com um link para abrir a conversa com ele.
  */
 export async function notificarResponsavel(
-  nomeVisitante: string,
-  celularVisitante: string,
+  dados: VisitanteValidado,
+  recorrente: boolean,
   numeroResponsavel: string
 ): Promise<void> {
+  await enviarMensagemWhatsApp(numeroResponsavel, montarMensagemResponsavel(dados, recorrente));
+}
+
+/** Texto do aviso ao responsável, com a formatação do WhatsApp (*negrito*). */
+export function montarMensagemResponsavel(
+  dados: VisitanteValidado,
+  recorrente: boolean,
+  agora: Date = new Date()
+): string {
   // O servidor (Vercel) roda em UTC: sem o fuso explícito, um cadastro feito
   // às 20h de domingo apareceria como 23h no aviso.
-  const agora = new Date();
   const data = agora.toLocaleDateString("pt-BR", { timeZone: IGREJA.fusoHorario });
   const hora = agora.toLocaleTimeString("pt-BR", {
     timeZone: IGREJA.fusoHorario,
@@ -152,7 +168,24 @@ export async function notificarResponsavel(
     minute: "2-digit",
   });
 
-  const mensagem = `📋 Novo visitante em ${data} às ${hora}\n\nNome: ${nomeVisitante}\nCelular/WhatsApp: ${celularVisitante}\n\nVerifique os detalhes completos no banco de dados.`;
+  const linhas = montarFichaVisitante(dados).map(({ rotulo, valor }) =>
+    rotulo === "Celular"
+      ? `*${rotulo}:* ${formatarCelular(valor)}`
+      : rotulo === "Pedido de oração"
+        ? `*${rotulo}:*\n${valor}`
+        : `*${rotulo}:* ${valor}`
+  );
 
-  await enviarMensagemWhatsApp(numeroResponsavel, mensagem);
+  return [
+    `📋 *${recorrente ? "Visitante recorrente" : "Novo visitante"}* — ${data} às ${hora}`,
+    "",
+    ...linhas,
+    ...(recorrente ? ["", `⟳ ${AVISO_RECORRENTE}`] : []),
+    "",
+    `💬 Falar com ${primeiroNomeDe(dados.nome)} no WhatsApp: ${linkWhatsAppVisitante(dados.celular)}`,
+  ].join("\n");
+}
+
+function primeiroNomeDe(nome: string): string {
+  return nome.trim().split(/\s+/)[0] ?? nome;
 }

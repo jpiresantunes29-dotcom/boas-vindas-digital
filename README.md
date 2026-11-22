@@ -25,7 +25,7 @@ Fechar o ciclo entre "a pessoa visitou" e "alguém da igreja falou com ela", com
 - Botão de envio desabilitado enquanto o cadastro está sendo enviado, evitando o toque duplo acidental.
 - Reconhecimento silencioso de visitante recorrente (celular já cadastrado antes).
 - Notificação automática por e-mail aos responsáveis configurados a cada novo cadastro.
-- Notificação por WhatsApp (Evolution API, opcional): aviso ao responsável e confirmação ao visitante — esta **só se ele marcar** que quer receber (opt-in).
+- Notificação por WhatsApp (Evolution API, opcional): ficha completa do visitante para o responsável e confirmação ao visitante — esta **só se ele marcar** que quer receber (opt-in).
 - Tela de sucesso que já mostra cultos, contato e Instagram — substituindo o QR "Saiba Mais" do cartão físico.
 
 ## 5. Tecnologias utilizadas
@@ -172,7 +172,7 @@ A cada cadastro, `NOTIFICACAO_EMAIL_PRINCIPAL` (e `NOTIFICACAO_EMAIL_ADMIN`, se 
 
 Após o cadastro bem-sucedido, o sistema envia até **duas** mensagens de WhatsApp:
 
-1. **Para o responsável** (`NOTIFICACAO_WHATSAPP_NUMERO`): aviso de novo cadastro com nome e celular.
+1. **Para o responsável** (`NOTIFICACAO_WHATSAPP_NUMERO`): a ficha completa do novo visitante — os mesmos dados do e-mail (contato, dados pessoais, endereço, como conheceu, o que gostaria, pedido de oração, recorrência) — e um link `wa.me` para abrir a conversa com ele. E-mail e WhatsApp montam a ficha a partir do mesmo módulo (`lib/notificacao/fichaVisitante.ts`), então nunca divergem.
 2. **Para o visitante**: confirmação de que o cadastro foi recebido — **somente se ele marcou** no formulário que aceita receber mensagem pelo WhatsApp (opt-in, gravado em `aceita_whatsapp`).
 
 Detalhes que já estão tratados no código:

@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { IGREJA } from "@/lib/config/igreja";
+import { visitanteSchema, type VisitanteInput } from "@/lib/validacao/visitanteSchema";
 
 // "server-only" lança fora do bundle de servidor do Next; nos testes, vira no-op.
 vi.mock("server-only", () => ({}));
@@ -8,9 +9,39 @@ vi.mock("server-only", () => ({}));
 import {
   enviarMensagemWhatsApp,
   formatarNumeroParaEvolution,
+  montarMensagemResponsavel,
   notificarResponsavel,
   notificarVisitante,
 } from "@/lib/notificacao/enviarWhatsApp";
+
+const VISITANTE: VisitanteInput = {
+  nome: "Maria da Silva",
+  celular: "(41) 99747-9889",
+  email: "maria@exemplo.com",
+  sexo: "feminino",
+  estadoCivil: "casado",
+  dataNascimento: "1990-05-20",
+  cep: "81000-000",
+  endereco: "Rua das Flores",
+  numero: "100",
+  complemento: "Apto 12",
+  tipoMoradia: "apartamento",
+  bairro: "CIC",
+  cidade: "Curitiba",
+  comoConheceu: "convite",
+  convidadoPor: "João (41) 98888-7777",
+  outraIgreja: "Nenhuma",
+  desejaSeUnir: true,
+  desejaReceberVisita: true,
+  pedidoOracao: "Pela saúde da minha mãe.",
+  aceitaWhatsApp: true,
+  aceitaPrivacidade: true,
+  empresa: "",
+};
+
+function visitante(sobrescrever: Partial<VisitanteInput> = {}) {
+  return visitanteSchema.parse({ ...VISITANTE, ...sobrescrever });
+}
 
 const fetchMock = vi.fn<typeof fetch>();
 
@@ -144,11 +175,50 @@ describe("mensagens", () => {
     // 01:30 UTC de 1º/mar = 22:30 de 28/fev em São Paulo (UTC-3).
     vi.setSystemTime(new Date("2026-03-01T01:30:00Z"));
 
-    await notificarResponsavel("Maria da Silva", "41997479889", "5541988887777");
+    await notificarResponsavel(visitante(), false, "5541988887777");
 
     const { corpo } = ultimaChamada();
     expect(corpo.number).toBe("5541988887777");
     expect(corpo.text).toContain("28/02/2026 às 22:30");
-    expect(corpo.text).toContain("Nome: Maria da Silva");
+    expect(corpo.text).toContain("*Nome:* Maria da Silva");
+  });
+
+  it("manda ao responsável a ficha completa do visitante, igual à do e-mail", () => {
+    const texto = montarMensagemResponsavel(visitante(), false, new Date("2026-03-01T22:00:00Z"));
+
+    for (const trecho of [
+      "📋 *Novo visitante* — 01/03/2026 às 19:00",
+      "*Nome:* Maria da Silva",
+      "*Celular:* (41) 99747-9889",
+      "*Aceita receber WhatsApp:* Sim",
+      "*E-mail:* maria@exemplo.com",
+      "*Sexo:* Feminino",
+      "*Estado civil:* Casado(a)",
+      "*Data de nascimento:* 20/05/1990",
+      "*Endereço:* Rua das Flores, 100, Apto 12, CIC, Curitiba, CEP 81000-000",
+      "*Tipo de moradia:* Apartamento",
+      "*Como conheceu a igreja:* Convite",
+      "*Convidado por:* João (41) 98888-7777",
+      "*Pertence a outra igreja:* Nenhuma",
+      "*Gostaria de:* Unir-se à igreja · Receber visita",
+      "*Pedido de oração:*\nPela saúde da minha mãe.",
+      "💬 Falar com Maria no WhatsApp: https://wa.me/5541997479889",
+    ]) {
+      expect(texto).toContain(trecho);
+    }
+    expect(texto).not.toContain("recorrente");
+  });
+
+  it("marca visitante recorrente e omite campos não preenchidos", () => {
+    const texto = montarMensagemResponsavel(
+      visitante({ email: "", pedidoOracao: "", outraIgreja: "", comoConheceu: undefined, convidadoPor: "" }),
+      true
+    );
+
+    expect(texto).toContain("📋 *Visitante recorrente*");
+    expect(texto).toContain("⟳ Este celular já apareceu em um cadastro anterior");
+    expect(texto).not.toContain("*E-mail:*");
+    expect(texto).not.toContain("*Pedido de oração:*");
+    expect(texto).not.toContain("*Pertence a outra igreja:*");
   });
 });

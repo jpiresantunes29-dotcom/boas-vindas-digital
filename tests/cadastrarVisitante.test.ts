@@ -141,8 +141,8 @@ describe("cadastrarVisitante", () => {
     expect(mocks.notificarVisitante).not.toHaveBeenCalled();
     expect(mocks.notificarNovoVisitante).toHaveBeenCalledTimes(1);
     expect(mocks.notificarResponsavel).toHaveBeenCalledWith(
-      "Maria da Silva",
-      "41997479889",
+      expect.objectContaining({ nome: "Maria da Silva", celular: "41997479889" }),
+      false,
       "5541988887777"
     );
   });
