@@ -107,7 +107,7 @@ Na Vercel: projeto → **Settings** → **Environment Variables** → **Add** (a
 | `EVOLUTION_API_URL` | `https://SEU-SERVICO.onrender.com` (sem `/` no final) | Config |
 | `EVOLUTION_API_KEY` | o mesmo valor de `AUTHENTICATION_API_KEY` | Secret |
 | `EVOLUTION_INSTANCE` | `igreja` (o nome exato da instância) | Config |
-| `NOTIFICACAO_WHATSAPP_NUMERO` | WhatsApp do responsável, só dígitos, com DDI e DDD (ex.: `5541999999999`) | Config |
+| `NOTIFICACAO_WHATSAPP_NUMERO` | WhatsApp de quem recebe a ficha, só dígitos, com DDI e DDD (ex.: `5541999999999`). Para dois ou mais, separe por vírgula: `5541999999999,5541988888888` | Config |
 
 Depois: **Deployments** → ⋯ no mais recente → **Redeploy**.
 

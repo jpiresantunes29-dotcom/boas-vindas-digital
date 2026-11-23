@@ -126,7 +126,7 @@ cp .env.example .env.local
 | `EVOLUTION_API_URL` | Para WhatsApp | URL base da sua instalação da Evolution API (ex: `https://evolution.suaigreja.com.br`) |
 | `EVOLUTION_API_KEY` | Para WhatsApp | Chave da Evolution API (enviada no header `apikey`) |
 | `EVOLUTION_INSTANCE` | Para WhatsApp | Nome da instância (o WhatsApp conectado) criada na Evolution API |
-| `NOTIFICACAO_WHATSAPP_NUMERO` | Para WhatsApp | WhatsApp do responsável que recebe o aviso — só dígitos, **com DDI e DDD** (ex: `5541999999999`) |
+| `NOTIFICACAO_WHATSAPP_NUMERO` | Para WhatsApp | WhatsApp de quem recebe o aviso — só dígitos, **com DDI e DDD** (ex: `5541999999999`). Para mais de um responsável, separe por vírgula (`5541999999999,5541988888888`): cada um recebe a própria mensagem |
 
 Sem as variáveis do Resend, o e-mail é pulado; sem as da Evolution, o WhatsApp é pulado. Em ambos os casos o cadastro continua funcionando e o motivo fica registrado no log.
 
@@ -172,7 +172,7 @@ A cada cadastro, `NOTIFICACAO_EMAIL_PRINCIPAL` (e `NOTIFICACAO_EMAIL_ADMIN`, se 
 
 Após o cadastro bem-sucedido, o sistema envia até **duas** mensagens de WhatsApp:
 
-1. **Para o responsável** (`NOTIFICACAO_WHATSAPP_NUMERO`): a ficha completa do novo visitante — os mesmos dados do e-mail (contato, dados pessoais, endereço, como conheceu, o que gostaria, pedido de oração, recorrência) — e um link `wa.me` para abrir a conversa com ele. E-mail e WhatsApp montam a ficha a partir do mesmo módulo (`lib/notificacao/fichaVisitante.ts`), então nunca divergem.
+1. **Para os responsáveis** (`NOTIFICACAO_WHATSAPP_NUMERO`, um ou vários números): a ficha completa do novo visitante — os mesmos dados do e-mail (contato, dados pessoais, endereço, como conheceu, o que gostaria, pedido de oração, recorrência) — e um link `wa.me` para abrir a conversa com ele. E-mail e WhatsApp montam a ficha a partir do mesmo módulo (`lib/notificacao/fichaVisitante.ts`), então nunca divergem.
 2. **Para o visitante**: confirmação de que o cadastro foi recebido — **somente se ele marcou** no formulário que aceita receber mensagem pelo WhatsApp (opt-in, gravado em `aceita_whatsapp`).
 
 Detalhes que já estão tratados no código:

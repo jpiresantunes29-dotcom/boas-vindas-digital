@@ -5,7 +5,11 @@ import { after } from "next/server";
 import { visitanteSchema, type VisitanteInput } from "@/lib/validacao/visitanteSchema";
 import { criarClienteSupabaseAdmin } from "@/lib/supabase/client";
 import { notificarNovoVisitante } from "@/lib/notificacao/enviarEmail";
-import { notificarVisitante, notificarResponsavel } from "@/lib/notificacao/enviarWhatsApp";
+import {
+  lerNumerosResponsaveis,
+  notificarVisitante,
+  notificarResponsavel,
+} from "@/lib/notificacao/enviarWhatsApp";
 import { pareceBot } from "@/lib/seguranca/honeypot";
 import { excedeuLimite } from "@/lib/seguranca/rateLimit";
 
@@ -148,8 +152,10 @@ export async function cadastrarVisitante(dados: VisitanteInput): Promise<Resulta
       envios.push(notificarVisitante(visitante.nome, visitante.celular));
     }
 
-    const numeroResponsavel = process.env.NOTIFICACAO_WHATSAPP_NUMERO?.trim();
-    if (numeroResponsavel) {
+    // Cada responsável recebe a própria mensagem, em envios independentes.
+    for (const numeroResponsavel of lerNumerosResponsaveis(
+      process.env.NOTIFICACAO_WHATSAPP_NUMERO
+    )) {
       envios.push(notificarResponsavel(visitante, recorrente, numeroResponsavel));
     }
 

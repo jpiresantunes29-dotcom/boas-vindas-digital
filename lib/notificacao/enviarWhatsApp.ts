@@ -62,6 +62,21 @@ export function formatarNumeroParaEvolution(numero: string): string {
 }
 
 /**
+ * Lê a lista de responsáveis que recebem a ficha (NOTIFICACAO_WHATSAPP_NUMERO).
+ * Aceita um ou vários números separados por vírgula ou ponto e vírgula, com ou
+ * sem máscara. Descarta itens vazios e números repetidos.
+ */
+export function lerNumerosResponsaveis(valor: string | undefined): string[] {
+  const numeros = (valor ?? "")
+    .split(/[,;]/)
+    .map((item) => item.replace(/\D/g, ""))
+    .filter((digitos) => digitos.length > 0)
+    .map(formatarNumeroParaEvolution);
+
+  return [...new Set(numeros)];
+}
+
+/**
  * Corpos de erro da Evolution API podem ecoar o número de destino (ex.: quando
  * o número não tem WhatsApp). Mascara sequências longas de dígitos para não
  * gravar telefone de visitante no log do servidor.

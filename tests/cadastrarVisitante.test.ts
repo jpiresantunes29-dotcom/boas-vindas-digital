@@ -43,7 +43,8 @@ vi.mock("@/lib/seguranca/rateLimit", () => ({
 vi.mock("@/lib/notificacao/enviarEmail", () => ({
   notificarNovoVisitante: mocks.notificarNovoVisitante,
 }));
-vi.mock("@/lib/notificacao/enviarWhatsApp", () => ({
+vi.mock("@/lib/notificacao/enviarWhatsApp", async (importarOriginal) => ({
+  ...(await importarOriginal<typeof import("@/lib/notificacao/enviarWhatsApp")>()),
   notificarVisitante: mocks.notificarVisitante,
   notificarResponsavel: mocks.notificarResponsavel,
 }));
@@ -165,6 +166,36 @@ describe("cadastrarVisitante", () => {
 
     expect(mocks.notificarResponsavel).not.toHaveBeenCalled();
     expect(mocks.notificarNovoVisitante).toHaveBeenCalledTimes(1);
+  });
+
+  it("manda a ficha para cada responsável quando há dois números na variável", async () => {
+    vi.stubEnv("NOTIFICACAO_WHATSAPP_NUMERO", "5541988887777, (41) 99999-1111");
+
+    await cadastrarVisitante(DADOS_VALIDOS);
+    await executarTarefasAfter();
+
+    expect(mocks.notificarResponsavel).toHaveBeenCalledTimes(2);
+    expect(mocks.notificarResponsavel).toHaveBeenCalledWith(
+      expect.objectContaining({ nome: "Maria da Silva" }),
+      false,
+      "5541988887777"
+    );
+    expect(mocks.notificarResponsavel).toHaveBeenCalledWith(
+      expect.objectContaining({ nome: "Maria da Silva" }),
+      false,
+      "5541999991111"
+    );
+  });
+
+  it("falha no envio para um responsável não impede o outro", async () => {
+    vi.stubEnv("NOTIFICACAO_WHATSAPP_NUMERO", "5541988887777,5541999991111");
+    mocks.notificarResponsavel.mockRejectedValueOnce(new Error("Evolution fora do ar"));
+
+    const resultado = await cadastrarVisitante(DADOS_VALIDOS);
+    await expect(executarTarefasAfter()).resolves.toBeUndefined();
+
+    expect(resultado.ok).toBe(true);
+    expect(mocks.notificarResponsavel).toHaveBeenCalledTimes(2);
   });
 
   it("uma notificação que falha não impede as outras nem quebra o cadastro", async () => {

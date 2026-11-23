@@ -9,6 +9,7 @@ vi.mock("server-only", () => ({}));
 import {
   enviarMensagemWhatsApp,
   formatarNumeroParaEvolution,
+  lerNumerosResponsaveis,
   montarMensagemResponsavel,
   notificarResponsavel,
   notificarVisitante,
@@ -91,6 +92,30 @@ describe("formatarNumeroParaEvolution", () => {
     expect(formatarNumeroParaEvolution("+55 41 99747-9889")).toBe("5541997479889");
     expect(formatarNumeroParaEvolution("+55 55 99999-8888")).toBe("5555999998888");
     expect(formatarNumeroParaEvolution("554133334444")).toBe("554133334444");
+  });
+});
+
+describe("lerNumerosResponsaveis", () => {
+  it("aceita um único número", () => {
+    expect(lerNumerosResponsaveis("5541997479889")).toEqual(["5541997479889"]);
+  });
+
+  it("aceita vários números separados por vírgula ou ponto e vírgula, com máscara", () => {
+    expect(lerNumerosResponsaveis("(41) 99747-9889, 5547988455100; +55 41 99999-1111")).toEqual([
+      "5541997479889",
+      "5547988455100",
+      "5541999991111",
+    ]);
+  });
+
+  it("descarta itens vazios e números repetidos", () => {
+    expect(lerNumerosResponsaveis("5541997479889,, 41997479889 ,")).toEqual(["5541997479889"]);
+  });
+
+  it("devolve lista vazia quando a variável está vazia ou ausente", () => {
+    expect(lerNumerosResponsaveis("")).toEqual([]);
+    expect(lerNumerosResponsaveis("  ")).toEqual([]);
+    expect(lerNumerosResponsaveis(undefined)).toEqual([]);
   });
 });
 
