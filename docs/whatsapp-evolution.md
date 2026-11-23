@@ -115,6 +115,18 @@ Depois: **Deployments** → ⋯ no mais recente → **Redeploy**.
 
 ---
 
+## Trocar o aparelho ou usar o WhatsApp Business
+
+O número da igreja pode ficar no **WhatsApp Business** no celular do pastor (aparelho principal), com o da esposa e o sistema como aparelhos vinculados — o WhatsApp Business aceita um celular principal e até quatro vinculados.
+
+- **Celular da esposa:** conecte pelo QR Code, em **Aparelhos conectados**. Nunca digite o número no segundo celular: isso desconecta o aparelho principal.
+- **Celular principal:** abra o WhatsApp pelo menos a cada 14 dias. Sem isso os aparelhos vinculados, incluindo o sistema, são desconectados.
+- **Troca de celular:** o número só muda de aparelho com o chip no celular novo (para receber o código de confirmação). Faça o backup das conversas antes. Depois da troca o sistema perde a conexão: gere um novo QR Code no `/manager` (Etapa 4) e escaneie.
+- **Quem envia e quem recebe:** o número conectado na Evolution é o que **envia**. Os números de `NOTIFICACAO_WHATSAPP_NUMERO` têm de ser **outros** (ex.: o WhatsApp pessoal do pastor e da esposa), porque uma mensagem para o próprio número normalmente não gera aviso.
+- **Risco de bloqueio:** a Evolution usa o WhatsApp Web por baixo (não é a API oficial da Meta). O volume é baixo e o visitante só recebe mensagem se marcar a opção, o que reduz o risco, mas ele não é zero. Para isolar o número principal da igreja, use um segundo número só para o sistema.
+
+---
+
 ## Problemas comuns
 
 Os erros do envio aparecem em **Vercel → Logs**, nas linhas que começam com **`[WhatsApp]`**. Os do servidor, em **Render → seu serviço → Logs**.
